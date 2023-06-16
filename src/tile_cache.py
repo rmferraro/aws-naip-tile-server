@@ -33,7 +33,9 @@ class TileCache(ABC):
         pass
 
     @abstractmethod
-    def save_tile(self, x: int, y: int, z: int, year: int, image: Image) -> None:
+    def save_tile(
+        self, x: int, y: int, z: int, year: int, image: Image, is_rescaled: bool = False
+    ) -> None:
         """Save tile image to cache.
 
         Parameters
@@ -48,6 +50,8 @@ class TileCache(ABC):
             naip year
         image: Image
             tile image
+        is_rescaled: bool
+            boolean to indicate if tile was created from rescaling other tiles
 
         Returns
         -------
@@ -159,7 +163,7 @@ class S3TileCache(TileCache):
     """S3 implementation of TileCache."""
 
     def __init__(
-        self, bucket: str, downscale_max_zoom: int = 10, upscale_min_zoom: int = 18
+        self, bucket: str, downscale_max_zoom: int = 11, upscale_min_zoom: int = 18
     ):
         """Initialize S3TileCache instance.
 
@@ -212,11 +216,13 @@ class S3TileCache(TileCache):
         elif z >= self.upscale_min_zoom:
             rescaled_tile = self.get_tile_from_upscaling(x, y, z, year)
         if rescaled_tile:
-            self.save_tile(x, y, z, year, rescaled_tile)
+            self.save_tile(x, y, z, year, rescaled_tile, is_rescaled=True)
 
         return rescaled_tile
 
-    def save_tile(self, x: int, y: int, z: int, year: int, image: Image) -> None:
+    def save_tile(
+        self, x: int, y: int, z: int, year: int, image: Image, is_rescaled: bool = False
+    ) -> None:
         """Save tile image to cache.
 
         Parameters
@@ -231,6 +237,8 @@ class S3TileCache(TileCache):
             naip year
         image: Image
             tile image
+        is_rescaled: bool
+            boolean to indicate if tile was created from rescaling other tiles
 
         Returns
         -------
@@ -239,7 +247,10 @@ class S3TileCache(TileCache):
         file_key = self._get_key(x, y, z, year)
         image_bytes = BytesIO()
         image.save(image_bytes, format="JPEG")
-        self.s3.Object(key=file_key).put(Body=image_bytes.getvalue())
+        self.s3.Object(key=file_key).put(
+            Body=image_bytes.getvalue(),
+            Metadata={"is_rescaled": "true"} if is_rescaled else {},
+        )
 
     def contains_tile(self, x: int, y: int, z: int, year: int) -> bool:
         """Checks if tile exists in cache.
