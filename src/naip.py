@@ -41,17 +41,13 @@ def _build_image(
     left, bottom, right, top = bounds.bounds
     xres = (right - left) / width
     yres = (top - bottom) / height
-    dst_transform = rasterio.transform.AffineTransformer(
-        affine.Affine(xres, 0.0, left, 0.0, -yres, top)
-    )
+    dst_transform = rasterio.transform.AffineTransformer(affine.Affine(xres, 0.0, left, 0.0, -yres, top))
 
     with rasterio.Env(session):
         for tif in geotiffs:
             with rasterio.open(tif) as src:
                 with WarpedVRT(src, crs=f"EPSG:{epsg}") as vrt:
-                    vrt_bounds = box(
-                        vrt.bounds[0], vrt.bounds[1], vrt.bounds[2], vrt.bounds[3]
-                    )
+                    vrt_bounds = box(vrt.bounds[0], vrt.bounds[1], vrt.bounds[2], vrt.bounds[3])
                     if not vrt_bounds.intersects(bounds):
                         # this would occur only if geometry in naip_index is inaccurate
                         continue
@@ -60,9 +56,7 @@ def _build_image(
                     crop_bounds = bounds.intersection(vrt_bounds).bounds
 
                     # determine the window to use in reading from the dataset.
-                    crop_window = vrt.window(
-                        crop_bounds[0], crop_bounds[1], crop_bounds[2], crop_bounds[3]
-                    )
+                    crop_window = vrt.window(crop_bounds[0], crop_bounds[1], crop_bounds[2], crop_bounds[3])
 
                     # determine where crop data will be written in composite image
                     ul_y, ul_x = dst_transform.rowcol(crop_bounds[0], crop_bounds[3])

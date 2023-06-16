@@ -28,5 +28,4 @@ exclude =
 # Limit on the calculated McCabe complexity of a unit of code
 max-complexity = 10
 
-# Black likes 88, it's a lucky number
-max-line-length = 88
+max-line-length = 120
