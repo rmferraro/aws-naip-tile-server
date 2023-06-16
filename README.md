@@ -12,6 +12,7 @@ I have worked on this project during some downtime between employment.  I have n
 # Some Background
 
 ### NAIP Imagery Availability
+![naip_coverage_by_year](https://github.com/rmferraro/aws-naip-tile-server/assets/4007906/96c60aed-0e5f-4400-bc81-0a8e286892b3)
 
 
 NAIP Imagery is available from many places,  in many formats, but most are quite inconvenient...  Lets take a look at a few that I know of:
