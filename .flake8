@@ -7,10 +7,6 @@ ignore =
     D104,
     # D401: Docstring first line should be imperative
     D401,
-    # D101 Missing docstring in public class
-    D101,
-    # D102 Missing docstring in public method
-    D102,
     # D503 line break before binary operator
     W503,
     # D504 line break after binary operator
