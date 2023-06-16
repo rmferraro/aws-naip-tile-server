@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  aws-naip-tile-server
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+
+Resources:
+  NAIPTileCache:
+    Type: AWS::S3::Bucket
+
+  NAIPLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - 'lambda.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+
+  NAIPApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: prod
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowHeaders:
+          - "Access-Control-Allow-Origin"
+          - "Content-Type"
+          - "X-Requested-With"
+        AllowMethods:
+          - GET
+          - OPTIONS
+
+  NAIPTileFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      FunctionName: get-naip-tile
+      Role: !GetAtt NAIPLambdaRole.Arn
+      Handler: src.handler.handler
+      Runtime: python3.10
+      Architectures:
+        - x86_64
+      Events:
+        NAIPTileHttp:
+          Type: HttpApi # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /tile/{year}/{z}/{y}/{x}
+            Method: get
+            ApiId: !Ref NAIPApi
+      Environment:
+        Variables:
+          TILE_CACHE_S3_BUCKET: !Ref NAIPTileCache
+
+
+Outputs:
+  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+  # Find out more about other implicit resources you can reference within SAM
+  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+  NAIPTileApi:
+    Description: "API Gateway endpoint URL for Prod stage for NAIPTileFunction"
+    Value: !Sub "https://${NAIPApi}.execute-api.${AWS::Region}.amazonaws.com/prod/tile"
+  NAIPTileFunction:
+    Description: "NAIPTileFunction Lambda Function ARN"
+    Value: !GetAtt NAIPTileFunction.Arn
+  NAIPLambdaIamRole:
+    Description: "NAIPLambdaRole ARN"
+    Value: !GetAtt NAIPLambdaRole.Arn
+  NAIPTileCache:
+    Description: "NAIPTileCache S3 Bucket"
+    Value: !Ref NAIPTileCache

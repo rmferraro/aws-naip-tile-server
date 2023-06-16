@@ -1,0 +1,7 @@
+.idea
+.pytest_cache
+.env
+.python-version
+.aws-sam
+.coverage
+**/__pycache__/
