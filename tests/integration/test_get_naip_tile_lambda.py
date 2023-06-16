@@ -17,15 +17,12 @@ def tile_base_uri():
             response = client.describe_stacks(StackName=stack_name)
         except Exception as e:
             raise Exception(
-                f"Cannot find stack {stack_name} \n"
-                f'Please make sure a stack with the name "{stack_name}" exists'
+                f"Cannot find stack {stack_name} \n" f'Please make sure a stack with the name "{stack_name}" exists'
             ) from e
 
         stacks = response["Stacks"]
         stack_outputs = stacks[0]["Outputs"]
-        api_outputs = [
-            output for output in stack_outputs if output["OutputKey"] == "NAIPTileApi"
-        ]
+        api_outputs = [output for output in stack_outputs if output["OutputKey"] == "NAIPTileApi"]
 
         if not api_outputs:
             raise KeyError(f"NAIPTileApi not found in stack {stack_name}")

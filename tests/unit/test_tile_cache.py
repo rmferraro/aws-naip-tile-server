@@ -68,9 +68,7 @@ def test_s3_downscale_tile(s3_tile_cache, tile_image):
     """Test confirms that downscaling will return Image if children tiles in cache."""
     tile = mercantile.Tile(10, 10, 10)
     for children_tile in mercantile.children(tile):
-        s3_tile_cache.save_tile(
-            children_tile.x, children_tile.y, children_tile.z, 2099, tile_image
-        )
+        s3_tile_cache.save_tile(children_tile.x, children_tile.y, children_tile.z, 2099, tile_image)
     tile_image = s3_tile_cache.get_tile_from_downscaling(tile.x, tile.y, tile.z, 2099)
     assert tile_image is not None
 
@@ -86,9 +84,7 @@ def test_s3_upscale_tile(s3_tile_cache, tile_image):
     """Test confirms that upscaling will return Image if parent tile in cache."""
     tile = mercantile.Tile(11, 11, 11)
     parent_tile = mercantile.parent(tile)
-    s3_tile_cache.save_tile(
-        parent_tile.x, parent_tile.y, parent_tile.z, 2099, tile_image
-    )
+    s3_tile_cache.save_tile(parent_tile.x, parent_tile.y, parent_tile.z, 2099, tile_image)
     tile_image = s3_tile_cache.get_tile_from_upscaling(tile.x, tile.y, tile.z, 2099)
     assert tile_image is not None
 

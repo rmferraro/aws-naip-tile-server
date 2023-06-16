@@ -33,9 +33,7 @@ class TileCache(ABC):
         pass
 
     @abstractmethod
-    def save_tile(
-        self, x: int, y: int, z: int, year: int, image: Image, is_rescaled: bool = False
-    ) -> None:
+    def save_tile(self, x: int, y: int, z: int, year: int, image: Image, is_rescaled: bool = False) -> None:
         """Save tile image to cache.
 
         Parameters
@@ -103,9 +101,7 @@ class TileCache(ABC):
         """
         children_tile_images = []
         for child_tile in mercantile.children(x, y, z):
-            chile_tile_image = self.get_tile(
-                child_tile.x, child_tile.y, child_tile.z, year
-            )
+            chile_tile_image = self.get_tile(child_tile.x, child_tile.y, child_tile.z, year)
             if not chile_tile_image:
                 return None
             children_tile_images.append(chile_tile_image)
@@ -137,9 +133,7 @@ class TileCache(ABC):
             image if upscaling was possible, None otherwise
         """
         parent_tile = mercantile.parent(x, y, z)
-        parent_tile_image = self.get_tile(
-            parent_tile.x, parent_tile.y, parent_tile.z, year
-        )
+        parent_tile_image = self.get_tile(parent_tile.x, parent_tile.y, parent_tile.z, year)
         if not parent_tile_image:
             # cant do anything without the parent tile...
             return None
@@ -162,9 +156,7 @@ class TileCache(ABC):
 class S3TileCache(TileCache):
     """S3 implementation of TileCache."""
 
-    def __init__(
-        self, bucket: str, downscale_max_zoom: int = 11, upscale_min_zoom: int = 18
-    ):
+    def __init__(self, bucket: str, downscale_max_zoom: int = 11, upscale_min_zoom: int = 18):
         """Initialize S3TileCache instance.
 
         Parameters
@@ -220,9 +212,7 @@ class S3TileCache(TileCache):
 
         return rescaled_tile
 
-    def save_tile(
-        self, x: int, y: int, z: int, year: int, image: Image, is_rescaled: bool = False
-    ) -> None:
+    def save_tile(self, x: int, y: int, z: int, year: int, image: Image, is_rescaled: bool = False) -> None:
         """Save tile image to cache.
 
         Parameters
