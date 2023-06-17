@@ -171,6 +171,8 @@ class S3TileCache(TileCache):
             kick-in.
         """
         self.s3 = boto3.resource("s3").Bucket(bucket)
+        if not self.s3.creation_date:
+            raise ValueError(f"S3 Bucket: {bucket} not found")
         self.downscale_max_zoom = downscale_max_zoom
         self.upscale_min_zoom = upscale_min_zoom
 
