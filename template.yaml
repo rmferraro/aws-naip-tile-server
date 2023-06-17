@@ -9,10 +9,14 @@ Globals:
     Timeout: 30
     MemorySize: 1024
 
-Resources:
-  NAIPTileCache:
-    Type: AWS::S3::Bucket
+Parameters:
+  S3CacheBucketName:
+    Type: String
+    Description: Existing S3 Bucket that will be used for tile cache
+    Default: dummy-bucket
 
+
+Resources:
   NAIPLambdaRole:
     Type: AWS::IAM::Role
     Properties:
@@ -44,12 +48,24 @@ Resources:
           - GET
           - OPTIONS
 
+  NAIPUtilsLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: .
+      CompatibleRuntimes:
+        - python3.10
+    Metadata:
+      BuildMethod: makefile
+
   NAIPTileFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       FunctionName: get-naip-tile
       Role: !GetAtt NAIPLambdaRole.Arn
-      Handler: src.handler.handler
+      CodeUri: aws_naip_tile_server/functions/
+      Handler: get_naip_tile.handler
+      Layers:
+        - !Ref NAIPUtilsLayer
       Runtime: python3.10
       Architectures:
         - x86_64
@@ -62,7 +78,7 @@ Resources:
             ApiId: !Ref NAIPApi
       Environment:
         Variables:
-          TILE_CACHE_S3_BUCKET: !Ref NAIPTileCache
+          TILE_CACHE_S3_BUCKET: !Ref S3CacheBucketName
 
 
 Outputs:
@@ -78,6 +94,6 @@ Outputs:
   NAIPLambdaIamRole:
     Description: "NAIPLambdaRole ARN"
     Value: !GetAtt NAIPLambdaRole.Arn
-  NAIPTileCache:
-    Description: "NAIPTileCache S3 Bucket"
-    Value: !Ref NAIPTileCache
+  NAIPTileCacheS3Bucket:
+    Description: "NAIPTileCacheS3Bucket Name"
+    Value: !Ref S3CacheBucketName
