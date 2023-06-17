@@ -15,7 +15,7 @@ from rasterio.vrt import WarpedVRT
 from shapely.geometry import box
 from shapely.ops import transform
 
-from src.conversion import bbox_to_box
+from aws_naip_tile_server.layers.utils.conversion import bbox_to_box
 
 session = AWSSession(
     aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
@@ -114,7 +114,7 @@ def get_naip_geotiffs(bounds: box, year: int, epsg: int) -> list[str] | None:
     else:
         wgs84_bounds = bounds
     bounds = wgs84_bounds.bounds
-    naip_index_parquet = importlib.resources.path("src.data", "naip_index.parquet")
+    naip_index_parquet = importlib.resources.path("aws_naip_tile_server.data", "naip_index.parquet")
 
     df = pl.read_parquet(naip_index_parquet)
     df = df.filter(

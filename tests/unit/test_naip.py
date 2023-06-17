@@ -1,4 +1,4 @@
-from src.naip import get_tile
+from aws_naip_tile_server.layers.utils.naip import get_tile
 
 
 def test_get_valid_tile():

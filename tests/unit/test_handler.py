@@ -1,4 +1,4 @@
-from src.handler import handler
+from aws_naip_tile_server.functions.get_naip_tile import handler
 
 
 def test_valid_tile_via_event():

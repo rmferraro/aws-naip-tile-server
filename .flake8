@@ -15,7 +15,7 @@ ignore =
     U101
 per-file-ignores =
      tests/*: D103,
-     src/tile_cache.py: U100
+     aws_naip_tile_server/layers/utils/tile_cache.py: U100
 
 exclude =
     # No need to traverse our git directory

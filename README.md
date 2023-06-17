@@ -30,7 +30,8 @@ I've already (tried to) justify using AWS Registry of Open Data.  Without gettin
 # Dev Environment
 ## pre-requisites
 
- - [Poetry](https://python-poetry.org/)
+ - [Poetry](https://python-poetry.org/):  Python package/environment management
+ - [GNU Make](https://www.gnu.org/software/make/):  This is required by AWS SAM CLI to package up Lambda Layers
 
 ## setup
 With pre-requisites satisfied, from the root of this repo:

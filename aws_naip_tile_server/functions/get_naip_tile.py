@@ -1,8 +1,28 @@
 import os
 
-import src.conversion as conversion
-import src.naip as naip
-from src.tile_cache import S3TileCache
+import aws_naip_tile_server.layers.utils.conversion as conversion
+import aws_naip_tile_server.layers.utils.naip as naip
+from aws_naip_tile_server.layers.utils import logger
+from aws_naip_tile_server.layers.utils.tile_cache import S3TileCache
+
+
+def get_cache() -> S3TileCache:
+    """Attempt to get a tile cache based on environment variables.
+
+    Returns
+    -------
+    S3TileCache
+        S3TileCache instance if environment variables support it, else None
+    """
+    cache_bucket = os.getenv("TILE_CACHE_S3_BUCKET")
+    if not cache_bucket:
+        logger.warn("TILE_CACHE_S3_BUCKET env var missing - no tilecache")
+        return None
+    try:
+        return S3TileCache(cache_bucket)
+    except Exception as e:
+        logger.error(f"error creating S3TileCache backed by bucket {cache_bucket}: {e}")
+        return None
 
 
 def handler(event: dict, _context: object) -> dict:
@@ -47,12 +67,15 @@ def handler(event: dict, _context: object) -> dict:
     if not x or not y or not z or not year:
         return {"statusCode": 400, "body": None, "isBase64Encoded": False}
 
-    cache = S3TileCache(os.getenv("TILE_CACHE_S3_BUCKET"))
-    tile_image = cache.get_tile(x, y, z, year)
-    if not tile_image:
+    cache = get_cache()
+    if cache:
+        tile_image = cache.get_tile(x, y, z, year)
+        if not tile_image:
+            tile_image = naip.get_tile(z, y, x, year)
+            if tile_image:
+                cache.save_tile(x, y, z, year, tile_image)
+    else:
         tile_image = naip.get_tile(z, y, x, year)
-        if tile_image:
-            cache.save_tile(x, y, z, year, tile_image)
 
     if tile_image:
         b64_tile = conversion.img_to_b64(tile_image)
