@@ -13,7 +13,7 @@ Parameters:
   S3CacheBucketName:
     Type: String
     Description: Existing S3 Bucket that will be used for tile cache
-    Default: dummy-bucket
+    Default: aws-naip-tile-server-cache
 
 
 Resources:
@@ -48,7 +48,7 @@ Resources:
           - GET
           - OPTIONS
 
-  NAIPUtilsLayer:
+  UtilsLambdaLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
       ContentUri: .
@@ -65,7 +65,7 @@ Resources:
       CodeUri: aws_naip_tile_server/functions/
       Handler: get_naip_tile.handler
       Layers:
-        - !Ref NAIPUtilsLayer
+        - !Ref UtilsLambdaLayer
       Runtime: python3.10
       Architectures:
         - x86_64
