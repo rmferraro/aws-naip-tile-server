@@ -1,4 +1,4 @@
-build-NAIPUtilsLayer:
+build-UtilsLambdaLayer:
 	mkdir -p "$(ARTIFACTS_DIR)/python/aws_naip_tile_server"
 	cp -r aws_naip_tile_server/layers "$(ARTIFACTS_DIR)/python/aws_naip_tile_server"
 	cp -r aws_naip_tile_server/data "$(ARTIFACTS_DIR)/python/aws_naip_tile_server"

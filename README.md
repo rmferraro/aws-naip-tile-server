@@ -6,10 +6,19 @@ The National Agriculture Imagery Program (NAIP) imagery program acquires aerial 
 
 The purpose of this repository is to create a simple AWS Lambda function & API that can generate 'slippy-map' tiles that can be used in most modern web GIS frameworks and desktop GIS apps.
 
-### Disclaimer
-I have worked on this project during some downtime between employment.  I have not used the AWS Lambda function and/or API in any real-world applications (yet).  It's worked great in the light experimentation I have done with it - but this should be considered an alpha-level product.
+**DISCLAIMER:** I have worked on this project during downtime between employment.  I have not used the AWS Lambda function and/or API in any real-world applications (yet).  It's worked great in the light experimentation I have done with it - but this should be considered an alpha-level product.
 
-# Some Background
+## Table of Contents
+<!-- TOC -->
+  - [Some Background](#some-background)
+  - [Dev Environment](#dev-environment)
+  - [Deployment](#deployment)
+  - [Usage](#usage)
+  - [Admin CLI](#admin-cli)
+  - [Known Limitations](#known-limitations)
+<!-- /TOC -->
+
+## Some Background
 
 ### NAIP Imagery Availability
 ![naip_coverage_by_year](https://github.com/rmferraro/aws-naip-tile-server/assets/4007906/96c60aed-0e5f-4400-bc81-0a8e286892b3)
@@ -25,15 +34,16 @@ NAIP Imagery is available from many places,  in many formats, but most are quite
 Of the above sources, the AWS Registry of Open Data is by far the most readily usable.  But usage is still not a trivial.  There are 1 million+ geotiffs in the visualization bucket alone...  We're looking at hundreds of TB of data...  And the geotiffs are provided as digital ortho quarter quad tiles (DOQQs) projected into multiple UTM coordinate systems.
 
 ### Why AWS Lambda?
-I've already (tried to) justify using AWS Registry of Open Data.  Without getting into the specifics of the AWS pricing model - copying this imagery to some other hosting platform would seem to be a non-starter for many potential use cases.   So for lack of a better explanation, I consider this source of NAIP imagery 'tightly-coupled' to the AWS platform, and therefore using the full suite of AWS tools/magic makes sense.
+I've already attempted to justify using AWS Registry of Open Data.  Without getting into the specifics of the AWS pricing model - copying this imagery to some other hosting platform would seem to be a non-starter for many potential use cases.   So for lack of a better explanation, I consider this source of NAIP imagery 'tightly-coupled' to the AWS platform, and therefore using the full suite of AWS tools/magic makes sense.
 
-# Dev Environment
-## pre-requisites
+## Dev Environment
+
+### pre-requisites
 
  - [Poetry](https://python-poetry.org/):  Python package/environment management
  - [GNU Make](https://www.gnu.org/software/make/):  This is required by AWS SAM CLI to package up Lambda Layers
 
-## setup
+### setup
 With pre-requisites satisfied, from the root of this repo:
 
     poetry install
@@ -44,7 +54,7 @@ And then run the unit test-suite (Integration test-suite can't be run until you 
 
     pytest tests/unit
 
-# Deployment
+## Deployment
 Since the project uses AWS SAM CLI - deployment is very simple:
 
     rm -R .aws-sam && poetry export --without-hashes -o requirements.txt && sam build && rm requirements.txt && sam deploy
@@ -75,15 +85,15 @@ Since the project uses AWS SAM CLI - deployment is very simple:
 
 Of particular importance is the `NAIPTileApi` key.  This is the tile api...
 
-# Usage
+## Usage
 **NOTE:**  If a request is made for a tile where there is no NAIP imagery for the specific year requested, a HTTP 404 Not Found response status code will be returned by the Lambda function
 
-## HTTP API
+### HTTP API
 
     https://{XYZTileApi.Value}/prod/tile/{year}/{z}/{y}/{x}
 	https://dxw60vz69c.execute-api.us-west-2.amazonaws.com/prod/tile/2021/11/776/425
 
-## Python + boto3
+### Python + boto3
 
       import base64
       import boto3
@@ -101,9 +111,68 @@ Of particular importance is the `NAIPTileApi` key.  This is the tile api...
       response_payload = json.loads(response["Payload"].read().decode("utf-8"))
       tile_image = Image.open(BytesIO(base64.b64decode(response_payload["body"])))
 
-# Known Limitations
-1.  My primary goal was to use NAIP imagery for a basemap, so the `naip-visualization` bucket is most practical for this application.  Currently, there is no way to generate tiles for imagery in the `naip-analytic` or `naip-source` buckets.
-2.  It's possible that multiple requests for the same tile could be made at the same time. In the case the tile already exists in the s3 tile cache, there are no issues... But if the tile does not exist in the s3 tile cache, there would be redundant tile creation. The primary issue with redundant tile creation is increased lambda run time, which will cost more $$$. I currently perceive this to be a very minor potential issue... Even implementing some type of lock/wait to prevent redundant tile creation won't decrease lambda run time - because instead of building the tile - the lambda function will be running but idle...
-3.  Performance tanks for lower zoom levels (<12).  NAIP imagery in the `naip-visualization` S3 bucket have full-resolution data with 5 levels of overviews. This means that NAIP data can be read most efficiently at six zoom levels, in this case zooms 12-17.  Once we drop below zoom level 12, many images need to be combined and downsampled **on the fly**.  For example, to create an image for a single zoom 6 tile, you'd need to read _4,096_ times more data at level 12, then downsample.  In my opinion, NAIP is not particularly great for low zoom levels; it often appears patchy because of the many different collects and/or mixed resolutions of collects.  So I often use other imagery basemaps for lower level zooms.  In any case, there are a few potential solutions to this:
-4.  When a tile is requested, a spatial query is necessary to determine what geotiffs intersect the tile's geometry.  In the current implementation, a parquet index file is bundled in the `src.data` module and used for this purpose.  I chose this approach vs maintaining an index in a separate database of some sort - for simplicity's sake.  I'm fairly confident a spatial query executed against a postgis table would complete quicker than the equivalent parquet query.  So if/when the time comes to chase maximum performance - this is a good place to start...
-5.  For tiles that are already cached - calling the Lambda function seems inefficient; why not just fetch the tile from S3 directly?  Particularly on cold starts - the extra latency (and Lambda $$$) is avoidable.
+## Admin CLI
+There is a CLI available to perform admin-like actions that I feel are best done locally. To see a list of available commands, run:
+`python admin_cli.py --help`.
+
+Output:
+
+    Usage: admin_cli.py [OPTIONS] COMMAND [ARGS]...
+
+      CLI tool to perform admin actions
+
+    Options:
+      --help  Show this message and exit.
+
+    Commands:
+      seed-cache  Seed Tile Cache for specific areas/years.
+
+To get detailed info about specific commands:
+`python admin_cli.py [@command] --help`
+
+Example output for `seed-cache` command
+
+    Usage: admin_cli.py seed-cache [OPTIONS]
+
+      Seed Tile Cache for specific areas/years.
+
+    Options:
+      --from_zoom INTEGER  Zoom level cache-ing will start at
+      --to_zoom INTEGER    Zoom level cache-ing will end at  [required]
+      -y, --years INTEGER  NAIP years to cache
+      --coverage TEXT      WKT geometry (WGS84) of ground area to cache tiles for
+      --dry-run            Only print summary of how many tiles would be cached
+      --help               Show this message and exit.
+
+### Commands
+
+#### seed-cache
+
+    Usage: admin_cli.py seed-cache [OPTIONS]
+
+      Seed Tile Cache for specific areas/years.
+
+    Options:
+      --from_zoom INTEGER  Zoom level cache-ing will start at
+      --to_zoom INTEGER    Zoom level cache-ing will end at  [required]
+      -y, --years INTEGER  NAIP years to cache
+      --coverage TEXT      WKT geometry (WGS84) of ground area to cache tiles for
+      --dry-run            Only print summary of how many tiles would be cached
+      --help               Show this message and exit.
+
+This command will seed S3TileCache for specific areas/years.  Cacheing lower zoom levels will mitigate this [known limitation](#degrading-performance-for-lower-zoom-levels)
+
+
+## Known Limitations
+### Only using `naip-visualization` bucket
+My primary goal was to use NAIP imagery for a basemap, so the `naip-visualization` bucket is most practical for this application.  Currently, there is no way to generate tiles for imagery in the `naip-analytic` or `naip-source` buckets.
+### Redundant Tile Creation
+It's possible that multiple requests for the same tile could be made at the same time. In the case the tile already exists in the s3 tile cache, there are no issues... But if the tile does not exist in the s3 tile cache, there would be redundant tile creation. The primary issue with redundant tile creation is increased lambda run time, which will cost more $$$. I currently perceive this to be a very minor potential issue... Even implementing some type of lock/wait to prevent redundant tile creation won't decrease lambda run time - because instead of building the tile - the lambda function will be running but idle...
+### Degrading Performance for Lower Zoom Levels
+NAIP imagery in the `naip-visualization` S3 bucket have full-resolution data with 5 levels of overviews. This means that NAIP data can be read most efficiently at six zoom levels, in this case zooms 12-17.  Once we drop below zoom level 12, many images need to be combined and downsampled **on the fly**.  For example, to create an image for a single zoom 6 tile, you'd need to read _4,096_ times more data at level 12, then downsample.  In my opinion, NAIP is not particularly great for low zoom levels; it often appears patchy because of the many different collects and/or mixed resolutions of collects.  So I often use other imagery basemaps for lower level zooms.
+
+One workaround for this is to cache lower zoom levels (<12) using the [seed-cache](#seed-cache) command in the [Admin CLI](#admin-cli)
+### Spatial Queries on Bundled Parquet File
+When a tile is requested, a spatial query is necessary to determine what geotiffs intersect the tile's geometry.  In the current implementation, a parquet index file is bundled in the `src.data` module and used for this purpose.  I chose this approach vs maintaining an index in a separate database of some sort - for simplicity's sake.  I'm fairly confident a spatial query executed against a postgis table would complete quicker than the equivalent parquet query.  So if/when the time comes to chase maximum performance - this is a good place to start...
+### Inefficient AWS Lambda Usage
+For tiles that are already cached - calling the Lambda function seems inefficient; why not just fetch the tile from S3 directly?  Particularly on cold starts - the extra latency (and Lambda $$$) is avoidable.

@@ -35,6 +35,8 @@ boto3 = "^1.26.153"
 awscli = "^1.27.153"
 aws-sam-cli = "^1.86.1"
 pre-commit = "^3.3.3"
+aiohttp = "^3.8.4"
+tqdm = "^4.65.0"
 
 
 [tool.isort]
@@ -59,7 +61,7 @@ source = ["src"]
 
 [tool.coverage.run]
 branch = true
-source = ["src"]
+source = ["aws_naip_tile_server"]
 omit = [".*", "tests/*"]
 
 [tool.coverage.report]
