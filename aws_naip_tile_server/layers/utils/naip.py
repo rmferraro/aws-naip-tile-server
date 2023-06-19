@@ -1,6 +1,7 @@
-import importlib.resources
 import os
+from dataclasses import dataclass
 from functools import cache
+from pathlib import Path
 
 import affine
 import mercantile
@@ -12,10 +13,44 @@ from PIL import Image
 from rasterio.plot import reshape_as_image
 from rasterio.session import AWSSession
 from rasterio.vrt import WarpedVRT
+from shapely import Geometry
 from shapely.geometry import box
 from shapely.ops import transform
 
 from aws_naip_tile_server.layers.utils.conversion import bbox_to_box
+
+
+@dataclass()
+class AWSGeotiff:
+    """A class to represent AWS Geotiff."""
+
+    s3_path: str
+    min_x: float
+    min_y: float
+    max_x: float
+    max_y: float
+    year: int
+
+    def get_extent(self) -> Geometry:
+        """Get extent of geotiff.
+
+        Returns
+        -------
+        Geometry
+            shapely Geometry via box function
+        """
+        return box(self.min_x, self.min_y, self.max_x, self.max_y)
+
+    def get_resolution(self) -> str:
+        """Get resolution of geotiff based on s3_path.
+
+        Returns
+        -------
+        str
+            resolution (eg 60cm) of geotiff
+        """
+        return self.s3_path.split("/")[5]
+
 
 session = AWSSession(
     aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
@@ -44,8 +79,8 @@ def _build_image(
     dst_transform = rasterio.transform.AffineTransformer(affine.Affine(xres, 0.0, left, 0.0, -yres, top))
 
     with rasterio.Env(session):
-        for tif in geotiffs:
-            with rasterio.open(tif) as src:
+        for geotiff in geotiffs:
+            with rasterio.open(geotiff.s3_path) as src:
                 with WarpedVRT(src, crs=f"EPSG:{epsg}") as vrt:
                     vrt_bounds = box(vrt.bounds[0], vrt.bounds[1], vrt.bounds[2], vrt.bounds[3])
                     if not vrt_bounds.intersects(bounds):
@@ -90,43 +125,67 @@ def _get_transformer(src_epsg: int, dest_epsg: int):
     return pyproj.Transformer.from_crs(src_crs, dest_crs, always_xy=True).transform
 
 
-def get_naip_geotiffs(bounds: box, year: int, epsg: int) -> list[str] | None:
+def get_naip_geotiffs(coverage: Geometry = None, year: int = None, epsg: int = 4326) -> list[AWSGeotiff] | None:
     """Find NAIP rgb geotiffs that cover a specific area, for a specific year.
 
     Parameters
     ----------
-    bounds: shapely.box
-        bounding box to query
+    coverage: shapely.Geometry
+        geometry to filter geotiffs by
     year: int
-        year to query
+        year to filter geotiffs by
     epsg: int
         coordinate reference system that bounds uses
 
     Returns
     -------
-    list[str]
-        A list of s3 paths to rgb geotiffs
+    list[AWSGeotiff]
+        A list of AWSGeotiff instances
 
     """
-    if epsg != 4326:
-        transformer = _get_transformer(epsg, 4326)
-        wgs84_bounds = transform(transformer, bounds)
-    else:
-        wgs84_bounds = bounds
-    bounds = wgs84_bounds.bounds
-    naip_index_parquet = importlib.resources.path("aws_naip_tile_server.data", "naip_index.parquet")
+    if not coverage and not year:
+        raise ValueError("must supply coverage and/or year parameters")
 
+    naip_index_parquet = os.path.join(Path(__file__).parent.parent.parent, "data", "naip_index.parquet")
     df = pl.read_parquet(naip_index_parquet)
-    df = df.filter(
-        (pl.col("year") == year)
-        & ~(
-            (pl.col("max_x") < bounds[0])
-            | (pl.col("min_x") > bounds[2])
-            | (pl.col("max_y") < bounds[1])
-            | (pl.col("min_y") > bounds[3])
-        )
-    )
-    return df["geotiff"].to_list()
+
+    if coverage:
+        if epsg != 4326:
+            transformer = _get_transformer(epsg, 4326)
+            wgs84_coverage = transform(transformer, coverage)
+        else:
+            wgs84_coverage = coverage
+        bounds = wgs84_coverage.bounds
+
+    if coverage and year:
+        rows = df.filter(
+            (pl.col("year") == year)
+            & ~(
+                (pl.col("max_x") < bounds[0])
+                | (pl.col("min_x") > bounds[2])
+                | (pl.col("max_y") < bounds[1])
+                | (pl.col("min_y") > bounds[3])
+            )
+        ).rows(named=True)
+    elif coverage:
+        rows = df.filter(
+            ~(
+                (pl.col("max_x") < bounds[0])
+                | (pl.col("min_x") > bounds[2])
+                | (pl.col("max_y") < bounds[1])
+                | (pl.col("min_y") > bounds[3])
+            )
+        ).rows(named=True)
+    else:
+        rows = df.filter((pl.col("year") == year)).rows(named=True)
+
+    geotiffs = [AWSGeotiff(**row) for row in rows]
+
+    # if geometry is not a box, test that
+    if coverage and wgs84_coverage != box(bounds[0], bounds[1], bounds[2], bounds[3]):
+        geotiffs = [gt for gt in geotiffs if wgs84_coverage.intersects(gt.get_extent())]
+
+    return geotiffs
 
 
 def get_tile(z: int, y: int, x: int, year: int) -> Image:
