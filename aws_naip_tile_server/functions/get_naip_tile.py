@@ -18,7 +18,7 @@ def _get_cache() -> S3TileCache | None:
     """
     cache_bucket = os.getenv("TILE_CACHE_S3_BUCKET")
     if not cache_bucket:
-        logger.warn("TILE_CACHE_S3_BUCKET env var missing - no tilecache")
+        logger.warning("TILE_CACHE_S3_BUCKET env var missing - no tilecache")
         return None
     try:
         tile_cache = S3TileCache(cache_bucket)

@@ -65,8 +65,8 @@ def _seed_preflight_check(from_zoom, to_zoom, _years, _coverage, dry_run):
 
 
 @click.command()
-@click.option("--from_zoom", type=int, default=0, help="Zoom level cache-ing will start at")
-@click.option("--to_zoom", type=int, required=True, help="Zoom level cache-ing will end at")
+@click.option("--from_zoom", type=int, default=0, help="Zoom level caching will start at")
+@click.option("--to_zoom", type=int, required=True, help="Zoom level caching will end at")
 @click.option(
     "--years",
     "-y",
@@ -106,7 +106,7 @@ def seed(from_zoom, to_zoom, years, coverage, dry_run):
         cache_summary_df = pl.DataFrame(
             [{"Year": r["year"], "Zoom Level": r["zoom"], "Tiles": len(r["tiles"])} for r in cache_tilesets]
         )
-        logger.info(f"Cache Summary:\n{cache_summary_df}")
+        logger.info(f"{year} Cache Summary:\n{cache_summary_df}")
 
         if not dry_run:
             for cache_tileset in cache_tilesets:
