@@ -19,6 +19,9 @@ from shapely.ops import transform
 
 from aws_naip_tile_server.layers.utils.conversion import bbox_to_box
 
+_naip_index_parquet = os.path.join(Path(__file__).parent.parent.parent, "data", "naip_index.parquet")
+_NAIP_INDEX_DF = pl.read_parquet(_naip_index_parquet)
+
 
 @dataclass()
 class AWSGeotiff:
@@ -146,9 +149,6 @@ def get_naip_geotiffs(coverage: Geometry = None, year: int = None, epsg: int = 4
     if not coverage and not year:
         raise ValueError("must supply coverage and/or year parameters")
 
-    naip_index_parquet = os.path.join(Path(__file__).parent.parent.parent, "data", "naip_index.parquet")
-    df = pl.read_parquet(naip_index_parquet)
-
     if coverage:
         if epsg != 4326:
             transformer = _get_transformer(epsg, 4326)
@@ -158,7 +158,7 @@ def get_naip_geotiffs(coverage: Geometry = None, year: int = None, epsg: int = 4
         bounds = wgs84_coverage.bounds
 
     if coverage and year:
-        rows = df.filter(
+        rows = _NAIP_INDEX_DF.filter(
             (pl.col("year") == year)
             & ~(
                 (pl.col("max_x") < bounds[0])
@@ -168,7 +168,7 @@ def get_naip_geotiffs(coverage: Geometry = None, year: int = None, epsg: int = 4
             )
         ).rows(named=True)
     elif coverage:
-        rows = df.filter(
+        rows = _NAIP_INDEX_DF.filter(
             ~(
                 (pl.col("max_x") < bounds[0])
                 | (pl.col("min_x") > bounds[2])
@@ -177,7 +177,7 @@ def get_naip_geotiffs(coverage: Geometry = None, year: int = None, epsg: int = 4
             )
         ).rows(named=True)
     else:
-        rows = df.filter((pl.col("year") == year)).rows(named=True)
+        rows = _NAIP_INDEX_DF.filter((pl.col("year") == year)).rows(named=True)
 
     geotiffs = [AWSGeotiff(**row) for row in rows]
 

@@ -1,4 +1,5 @@
 import os
+from functools import lru_cache
 
 import aws_naip_tile_server.layers.utils.conversion as conversion
 import aws_naip_tile_server.layers.utils.naip as naip
@@ -6,7 +7,8 @@ from aws_naip_tile_server.layers.utils import logger
 from aws_naip_tile_server.layers.utils.tile_cache import S3TileCache
 
 
-def get_cache() -> S3TileCache:
+@lru_cache(maxsize=1)
+def _get_cache() -> S3TileCache | None:
     """Attempt to get a tile cache based on environment variables.
 
     Returns
@@ -19,7 +21,9 @@ def get_cache() -> S3TileCache:
         logger.warn("TILE_CACHE_S3_BUCKET env var missing - no tilecache")
         return None
     try:
-        return S3TileCache(cache_bucket)
+        tile_cache = S3TileCache(cache_bucket)
+        logger.info(f"Successfully created S3TileCache backed by bucket: {cache_bucket}")
+        return tile_cache
     except Exception as e:
         logger.error(f"error creating S3TileCache backed by bucket {cache_bucket}: {e}")
         return None
@@ -67,7 +71,7 @@ def handler(event: dict, _context: object) -> dict:
     if not x or not y or not z or not year:
         return {"statusCode": 400, "body": None, "isBase64Encoded": False}
 
-    cache = get_cache()
+    cache = _get_cache()
     if cache:
         tile_image = cache.get_tile(x, y, z, year)
         if not tile_image:
