@@ -3,31 +3,18 @@ import json
 import boto3
 import pytest
 import requests
-import tomli
+
+from aws_naip_tile_server.admin.utils.stack_info import (
+    get_is_stack_deployed,
+    get_stack_output_value,
+)
+
+pytestmark = pytest.mark.skipif(get_is_stack_deployed() is False, reason="AWS Stack not deployed")
 
 
 @pytest.fixture(scope="module")
 def tile_base_uri():
-    with open("./samconfig.toml", mode="rb") as fp:
-        config = tomli.load(fp)
-        stack_name = config["default"]["global"]["parameters"]["stack_name"]
-        client = boto3.client("cloudformation")
-
-        try:
-            response = client.describe_stacks(StackName=stack_name)
-        except Exception as e:
-            raise Exception(
-                f"Cannot find stack {stack_name} \n" f'Please make sure a stack with the name "{stack_name}" exists'
-            ) from e
-
-        stacks = response["Stacks"]
-        stack_outputs = stacks[0]["Outputs"]
-        api_outputs = [output for output in stack_outputs if output["OutputKey"] == "NAIPTileApi"]
-
-        if not api_outputs:
-            raise KeyError(f"NAIPTileApi not found in stack {stack_name}")
-
-        return api_outputs[0]["OutputValue"]
+    return get_stack_output_value("NAIPTileApi")
 
 
 def test_get_valid_tile_via_api(tile_base_uri):

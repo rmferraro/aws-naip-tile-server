@@ -1,10 +1,12 @@
 import os
+from functools import lru_cache
 from pathlib import Path
 
 import boto3
 import tomli
 
 
+@lru_cache(maxsize=1)
 def _get_stack_outputs():
     with open(os.path.join(Path(__file__).parent.parent.parent.parent, "samconfig.toml"), mode="rb") as fp:
         config = tomli.load(fp)
@@ -17,7 +19,7 @@ def _get_stack_outputs():
         return stacks[0]["Outputs"]
 
     except Exception as e:
-        raise Exception(
+        raise ValueError(
             f"Cannot find stack {stack_name} \n" f'Please make sure a stack with the name "{stack_name}" exists'
         ) from e
 
