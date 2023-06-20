@@ -5,7 +5,7 @@ description = ""
 authors = []
 readme = "README.md"
 packages = [
-    {include='src'}
+    {include='aws_naip_tile_server'}
 ]
 
 [tool.poetry.dependencies]
@@ -37,6 +37,7 @@ aws-sam-cli = "^1.86.1"
 pre-commit = "^3.3.3"
 aiohttp = "^3.8.4"
 tqdm = "^4.65.0"
+tomli = "^2.0.1"
 
 
 [tool.isort]
