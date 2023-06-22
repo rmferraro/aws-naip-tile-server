@@ -69,6 +69,8 @@ omit = [".*", "tests/*"]
 show_missing = true
 #fail_under = 100
 
+[tool.poetry.scripts]
+admin_cli = "src.admin_cli:cli"
 
 [build-system]
 requires = ["poetry-core"]

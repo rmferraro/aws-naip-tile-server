@@ -108,6 +108,7 @@ def seed(from_zoom, to_zoom, years, coverage, dry_run):
                 cache_tileset["tiles"] = cache.get_missing_tile_subset(tiles, year)
             else:
                 cache_tileset["tiles"] = tiles
+            cache_tilesets.append(cache_tileset)
 
         cache_summary_df = pl.DataFrame(
             [
@@ -121,6 +122,7 @@ def seed(from_zoom, to_zoom, years, coverage, dry_run):
                 for r in cache_tilesets
             ]
         )
+
         logger.info(f"{year} Cache Summary:\n{cache_summary_df}")
 
         if not dry_run:

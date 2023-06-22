@@ -177,11 +177,14 @@ Of particular importance is the `NAIPTileApi` key.  This is the tile api...
 
 ## Admin CLI
 There is a CLI available to perform admin-like actions that I feel are best done locally. To see a list of available commands, run:
-`python admin_cli.py --help`.
+`admin_cli --help`.
+
+If the poetry shell **isn't** activated - you'll need to use:
+`poetry run admin_cli --help`
 
 Output:
 
-    Usage: admin_cli.py [OPTIONS] COMMAND [ARGS]...
+    Usage: admin_cli [OPTIONS] COMMAND [ARGS]...
 
       CLI tool to perform admin actions
 
@@ -192,11 +195,11 @@ Output:
       seed-cache  Seed Tile Cache for specific areas/years.
 
 To get detailed info about specific commands:
-`python admin_cli.py [@command] --help`
+`poetry run admin_cli [@command] --help`
 
 Example output for `seed-cache` command
 
-    Usage: admin_cli.py seed-cache [OPTIONS]
+    Usage: admin_cli seed-cache [OPTIONS]
 
       Seed Tile Cache for specific areas/years.
 
@@ -212,7 +215,7 @@ Example output for `seed-cache` command
 
 #### seed-cache
 
-    Usage: admin_cli.py seed-cache [OPTIONS]
+    Usage: admin_cli seed-cache [OPTIONS]
 
       Seed Tile Cache for specific areas/years.
 
