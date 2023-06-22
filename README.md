@@ -6,7 +6,7 @@ The National Agriculture Imagery Program (NAIP) imagery program acquires aerial 
 
 The purpose of this repository is to create a simple AWS Lambda function & API that can generate 'slippy-map' tiles that can be used in most modern web GIS frameworks and desktop GIS apps.
 
-**DISCLAIMER:** I have worked on this project during downtime between employment, as on opportunity to get some hands on experience with AWS Serverless capabilities.  I have not used the AWS Lambda function and/or API in any real-world applications (yet).  It's worked great in the light experimentation I have done with it - but this should be considered an alpha-level product.
+**DISCLAIMER:** I have worked on this project during downtime between employment, as an opportunity to get some hands on experience with AWS Serverless capabilities.  I have not used the AWS Lambda function and/or API in any real-world applications (yet).  It's worked great in the light experimentation I have done with it - but this should be considered an alpha-level product.
 
 ## Table of Contents
 <!-- TOC -->

@@ -1,9 +1,6 @@
 import pytest
 
-from aws_naip_tile_server.admin.utils.stack_info import (
-    get_is_stack_deployed,
-    get_stack_output_value,
-)
+from src.utils.stack_info import get_is_stack_deployed, get_stack_output_value
 
 _STACK_DEPLOYED = get_is_stack_deployed()
 

@@ -1,8 +1,8 @@
 from functools import lru_cache
 
-import aws_naip_tile_server.layers.utils.conversion as conversion
-import aws_naip_tile_server.layers.utils.naip as naip
-from aws_naip_tile_server.layers.utils.env import TileServerConfig
+import src.utils.conversion as conversion
+import src.utils.naip as naip
+from src.utils.env import TileServerConfig
 
 
 @lru_cache(maxsize=1)

@@ -8,7 +8,7 @@ import tomli
 
 @lru_cache(maxsize=1)
 def _get_stack_outputs():
-    with open(os.path.join(Path(__file__).parent.parent.parent.parent, "samconfig.toml"), mode="rb") as fp:
+    with open(os.path.join(Path(__file__).parent.parent.parent, "samconfig.toml"), mode="rb") as fp:
         config = tomli.load(fp)
         stack_name = config["default"]["global"]["parameters"]["stack_name"]
 

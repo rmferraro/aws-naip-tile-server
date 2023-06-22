@@ -90,7 +90,7 @@ Resources:
     Properties:
       FunctionName: get-naip-tile
       Role: !GetAtt NAIPLambdaRole.Arn
-      CodeUri: aws_naip_tile_server/functions/
+      CodeUri: src/lambda_functions/
       Handler: get_naip_tile.handler
       Layers:
         - !Ref UtilsLambdaLayer

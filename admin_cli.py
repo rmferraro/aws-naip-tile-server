@@ -1,9 +1,9 @@
 import click
 
-from aws_naip_tile_server.admin.commands import cache
+from src.admin.commands import cache
 
 
-@click.group(help="CLI tool to perform admin actions")
+@click.group(help="CLI tool to perform admin_cli actions")
 def cli():
     """Admin CLI."""
     pass
