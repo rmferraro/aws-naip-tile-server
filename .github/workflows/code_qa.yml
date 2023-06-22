@@ -84,12 +84,12 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: us-west-2
-          ImageFormat: ${{ env.IMAGEFORMAT}}
-          MaxZoom: ${{ env.MAXZOOM }}
-          MinZoom: ${{ env.MINZOOM }}
-          DownscaleMaxZoom: ${{ env.DOWNSCALEMAXZOOM }}
-          UpscaleMinZoom: ${{ env.UPSCALEMINZOOM }}
-          RescalingEnabled: ${{ env.RESCALINGENABLED }}
-          TileCacheBucket: ${{ env.TILECACHEBUCKET }}
+          ImageFormat: ${{ vars.IMAGEFORMAT}}
+          MaxZoom: ${{ vars.MAXZOOM }}
+          MinZoom: ${{ vars.MINZOOM }}
+          DownscaleMaxZoom: ${{ vars.DOWNSCALEMAXZOOM }}
+          UpscaleMinZoom: ${{ vars.UPSCALEMINZOOM }}
+          RescalingEnabled: ${{ vars.RESCALINGENABLED }}
+          TileCacheBucket: ${{ vars.TILECACHEBUCKET }}
         run: |
           poetry run pytest
