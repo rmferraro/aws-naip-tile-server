@@ -6,15 +6,43 @@ Description: >
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
-    Timeout: 30
+    Timeout: 60
     MemorySize: 1024
 
 Parameters:
-  S3CacheBucketName:
+  ImageFormat:
     Type: String
-    Description: Existing S3 Bucket that will be used for tile cache
-    Default: aws-naip-tile-server-cache
-
+    Description: Image format tiles will be returned in
+    AllowedValues:
+      - JPEG
+      - PNG
+    Default: PNG
+  MaxZoom:
+    Type: Number
+    Description: Max zoom level API will return tiles for
+    Default: 20
+  MinZoom:
+    Type: Number
+    Description: Min zoom level API will return tiles for
+    Default: 10
+  DownscaleMaxZoom:
+    Type: Number
+    Description: Max zoom level where attempts to create missing tile from downscaling will kick in
+    Default: 11
+  UpscaleMinZoom:
+    Type: Number
+    Description: Min zoom level where attempts to create missing tile from upscaling will kick in
+    Default: 18
+  RescalingEnabled:
+    Type: String
+    Description: Create missing tiles by rescaling cached tiles
+    AllowedValues:
+      - "TRUE"
+      - "FALSE"
+    Default: "TRUE"
+  TileCacheBucket:
+    Type: String
+    Description: Name of S3 bucket to be used as tile cache
 
 Resources:
   NAIPLambdaRole:
@@ -78,13 +106,15 @@ Resources:
             ApiId: !Ref NAIPApi
       Environment:
         Variables:
-          TILE_CACHE_S3_BUCKET: !Ref S3CacheBucketName
-
+          ImageFormat: !Ref ImageFormat
+          MaxZoom: !Ref MaxZoom
+          MinZoom: !Ref MinZoom
+          DownscaleMaxZoom: !Ref DownscaleMaxZoom
+          UpscaleMinZoom: !Ref UpscaleMinZoom
+          RescalingEnabled: !Ref RescalingEnabled
+          TileCacheBucket: !Ref TileCacheBucket
 
 Outputs:
-  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-  # Find out more about other implicit resources you can reference within SAM
-  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
   NAIPTileApi:
     Description: "API Gateway endpoint URL for Prod stage for NAIPTileFunction"
     Value: !Sub "https://${NAIPApi}.execute-api.${AWS::Region}.amazonaws.com/prod/tile"
@@ -94,6 +124,18 @@ Outputs:
   NAIPLambdaIamRole:
     Description: "NAIPLambdaRole ARN"
     Value: !GetAtt NAIPLambdaRole.Arn
-  NAIPTileCacheS3Bucket:
-    Description: "NAIPTileCacheS3Bucket Name"
-    Value: !Ref S3CacheBucketName
+  ImageFormat:
+    Description: "ImageFormat"
+    Value: !Ref ImageFormat
+  DownscaleMaxZoom:
+    Description: "DownscaleMaxZoom"
+    Value: !Ref DownscaleMaxZoom
+  UpscaleMinZoom:
+    Description: "UpscaleMinZoom"
+    Value: !Ref UpscaleMinZoom
+  RescalingEnabled:
+    Description: "RescalingEnabled"
+    Value: !Ref RescalingEnabled
+  TileCacheBucket:
+    Description: "TileCacheBucket"
+    Value: !Ref TileCacheBucket

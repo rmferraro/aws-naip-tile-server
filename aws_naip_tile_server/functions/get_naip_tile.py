@@ -1,32 +1,13 @@
-import os
 from functools import lru_cache
 
 import aws_naip_tile_server.layers.utils.conversion as conversion
 import aws_naip_tile_server.layers.utils.naip as naip
-from aws_naip_tile_server.layers.utils import logger
-from aws_naip_tile_server.layers.utils.tile_cache import S3TileCache
+from aws_naip_tile_server.layers.utils.env import TileServerConfig
 
 
 @lru_cache(maxsize=1)
-def _get_cache() -> S3TileCache | None:
-    """Attempt to get a tile cache based on environment variables.
-
-    Returns
-    -------
-    S3TileCache
-        S3TileCache instance if environment variables support it, else None
-    """
-    cache_bucket = os.getenv("TILE_CACHE_S3_BUCKET")
-    if not cache_bucket:
-        logger.warning("TILE_CACHE_S3_BUCKET env var missing - no tilecache")
-        return None
-    try:
-        tile_cache = S3TileCache(cache_bucket)
-        logger.info(f"Successfully created S3TileCache backed by bucket: {cache_bucket}")
-        return tile_cache
-    except Exception as e:
-        logger.error(f"error creating S3TileCache backed by bucket {cache_bucket}: {e}")
-        return None
+def _get_tile_server_config() -> TileServerConfig:
+    return TileServerConfig.from_env()
 
 
 def handler(event: dict, _context: object) -> dict:
@@ -71,21 +52,26 @@ def handler(event: dict, _context: object) -> dict:
     if not x or not y or not z or not year:
         return {"statusCode": 400, "body": None, "isBase64Encoded": False}
 
-    cache = _get_cache()
-    if cache:
-        tile_image = cache.get_tile(x, y, z, year)
+    tile_server_config = _get_tile_server_config()
+    if z < tile_server_config.min_zoom or z > tile_server_config.max_zoom:
+        return {"statusCode": 400, "body": None, "isBase64Encoded": False}
+
+    if tile_server_config.tile_cache:
+        tile_image = tile_server_config.tile_cache.get_tile(x, y, z, year)
         if not tile_image:
             tile_image = naip.get_tile(z, y, x, year)
             if tile_image:
-                cache.save_tile(x, y, z, year, tile_image)
+                tile_server_config.tile_cache.save_tile(x, y, z, year, tile_image)
+            else:
+                tile_server_config.tile_cache.handle_null_tile(x, y, z, year)
     else:
         tile_image = naip.get_tile(z, y, x, year)
 
     if tile_image:
-        b64_tile = conversion.img_to_b64(tile_image)
+        b64_tile = conversion.img_to_b64(tile_image, tile_server_config.image_format)
         return {
             "statusCode": 200,
-            "headers": {"Content-Type": "image/jpeg"},
+            "headers": {"Content-Type": f"image/{tile_server_config.image_format.lower()}"},
             "body": b64_tile,
             "isBase64Encoded": True,
         }

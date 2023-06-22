@@ -76,7 +76,7 @@ def get_is_cache_enabled() -> bool:
     bool
         True if cacheing appears to be enabled, False otherwise
     """
-    cache_s3_bucket_name = get_stack_output_value("NAIPTileCacheS3Bucket")
+    cache_s3_bucket_name = get_stack_output_value("TileCacheBucket")
     cache_s3_bucket = boto3.resource("s3").Bucket(cache_s3_bucket_name)
     if not cache_s3_bucket.creation_date:
         # bucket doesnt exist

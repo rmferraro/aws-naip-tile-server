@@ -14,6 +14,7 @@ from aws_naip_tile_server.admin.utils.stack_info import (
 )
 from aws_naip_tile_server.layers.utils import logger
 from aws_naip_tile_server.layers.utils.conversion import bbox_to_box
+from aws_naip_tile_server.layers.utils.env import TileServerConfig
 from aws_naip_tile_server.layers.utils.naip import get_naip_geotiffs
 
 pl.Config.set_tbl_rows(1000)
@@ -85,13 +86,14 @@ def seed(from_zoom, to_zoom, years, coverage, dry_run):
     _seed_preflight_check(from_zoom, to_zoom, years, coverage, dry_run)
     for year in years:
         tileable_geotiffs = get_naip_geotiffs(coverage, year)
-        logger.info(f"{len(tileable_geotiffs)} tile-able geotiffs found for year: {year}")
+        logger.info(f"{len(tileable_geotiffs)} tileable geotiffs found for year: {year}")
         if not tileable_geotiffs:
             continue
 
         tileable_geotiff_coverage = union_all([gt.get_extent() for gt in tileable_geotiffs])
 
         # cache zoom levels in descending order to maximize downscaling of existing tiles
+        cache = TileServerConfig.from_env().tile_cache
         cache_tilesets = []
         for zoom in sorted(range(from_zoom, to_zoom + 1), reverse=True):
             west, south, east, north = tileable_geotiff_coverage.bounds
@@ -101,10 +103,23 @@ def seed(from_zoom, to_zoom, years, coverage, dry_run):
                 if not coverage or coverage.intersects(tile_bounds):
                     tiles.append(tile)
 
-            cache_tilesets.append({"year": year, "zoom": zoom, "tiles": tiles})
+            cache_tileset = {"year": year, "zoom": zoom, "total tiles": len(tiles)}
+            if cache:
+                cache_tileset["tiles"] = cache.get_missing_tile_subset(tiles, year)
+            else:
+                cache_tileset["tiles"] = tiles
 
         cache_summary_df = pl.DataFrame(
-            [{"Year": r["year"], "Zoom Level": r["zoom"], "Tiles": len(r["tiles"])} for r in cache_tilesets]
+            [
+                {
+                    "Year": r["year"],
+                    "Zoom Level": r["zoom"],
+                    "Total Tiles": r["total tiles"],
+                    "Cached Tiles": r["total tiles"] - len(r["tiles"]),
+                    "Missing Tiles": len(r["tiles"]),
+                }
+                for r in cache_tilesets
+            ]
         )
         logger.info(f"{year} Cache Summary:\n{cache_summary_df}")
 

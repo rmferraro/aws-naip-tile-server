@@ -6,16 +6,36 @@ The National Agriculture Imagery Program (NAIP) imagery program acquires aerial 
 
 The purpose of this repository is to create a simple AWS Lambda function & API that can generate 'slippy-map' tiles that can be used in most modern web GIS frameworks and desktop GIS apps.
 
-**DISCLAIMER:** I have worked on this project during downtime between employment.  I have not used the AWS Lambda function and/or API in any real-world applications (yet).  It's worked great in the light experimentation I have done with it - but this should be considered an alpha-level product.
+**DISCLAIMER:** I have worked on this project during downtime between employment, as on opportunity to get some hands on experience with AWS Serverless capabilities.  I have not used the AWS Lambda function and/or API in any real-world applications (yet).  It's worked great in the light experimentation I have done with it - but this should be considered an alpha-level product.
 
 ## Table of Contents
 <!-- TOC -->
-  - [Some Background](#some-background)
-  - [Dev Environment](#dev-environment)
-  - [Deployment](#deployment)
-  - [Usage](#usage)
-  - [Admin CLI](#admin-cli)
-  - [Known Limitations](#known-limitations)
+
+- [aws-naip-tile-server](#aws-naip-tile-server)
+    - [Table of Contents](#table-of-contents)
+    - [Some Background](#some-background)
+        - [NAIP Imagery Availability](#naip-imagery-availability)
+        - [Why AWS Lambda?](#why-aws-lambda)
+    - [Dev Environment](#dev-environment)
+        - [pre-requisites](#pre-requisites)
+        - [setup](#setup)
+    - [Deployment](#deployment)
+        - [Pre-Deployment Configuration](#pre-deployment-configuration)
+            - [Enable/Disable S3 Backed Tile Cache](#enabledisable-s3-backed-tile-cache)
+        - [Deploying with AWS SAM CLI](#deploying-with-aws-sam-cli)
+    - [Usage](#usage)
+        - [HTTP API](#http-api)
+        - [Python + boto3](#python--boto3)
+    - [Admin CLI](#admin-cli)
+        - [Commands](#commands)
+            - [seed-cache](#seed-cache)
+    - [Known Limitations](#known-limitations)
+        - [Only using naip-visualization bucket](#only-using-naip-visualization-bucket)
+        - [Redundant Tile Creation](#redundant-tile-creation)
+        - [Degrading Performance for Lower Zoom Levels](#degrading-performance-for-lower-zoom-levels)
+        - [Spatial Queries on Bundled Parquet File](#spatial-queries-on-bundled-parquet-file)
+        - [Inefficient AWS Lambda Usage](#inefficient-aws-lambda-usage)
+
 <!-- /TOC -->
 
 ## Some Background
@@ -50,58 +70,92 @@ With pre-requisites satisfied, from the root of this repo:
 
 If you haven't done so already, run `aws configure`.
 
-And then run the test-suite.  Full test-suite requires AWS Stack to be deployed.  If AWS Stack not deployed, a significant amount of tests get skipped.
+And then run the test-suite.  Running the full test-suite requires the AWS Stack to have be deployed successfully.  If the AWS Stack has not been deployed, a significant amount of tests get skipped.
 
     pytest
 
 ## Deployment
 
-### Pre-Deployment Considerations
+### Pre-Deployment Configuration
+There are several configuration options:
+- **ImageFormat**:  Image format tiles will be returned in.  Acceptable values are JPEG or PNG.  Default is PNG.
+- **MaxZoom**:  Max zoom level API will attempt to produce tiles for.  If a tile is requested at a higher zoom level, the API will return a HTTP 400 error.  Default is 20.
+- **MinZoom**:  Min zoom level API will attempt to produce tiles for.  If a tile is requested at a lower zoom level, the API will return a HTTP 400 error.  Default is 10.
+- **RescalingEnabled**:  Allow missing tiles to be produced from rescaling existing cached tiles.  Default is TRUE.
+- **DownscaleMaxZoom**:  If RescalingEnabled==TRUE, the max zoom level where attempts to create missing tiles from downscaling will kick in.  Default is 11.
+- **UpscaleMinZoom**:  If RescalingEnabled==TRUE, the min zoom level where attempts to create missing tiles from upscaling will kick in. Default is 18.
+- **TileCacheBucket**:  Existing S3 bucket name to be used as tile cache.  This bucket should be owned by the same AWS account deploying the Lambda function.
+
+Managing how environment variables in the AWS SAM CLI seems a bit convoluted.  I am not the only one with [this opinion](https://github.com/aws/aws-sam-cli/issues/1163)...  As far as I can tell, the _generally_ accepted approach is to define [CloudFormation Parameters](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html).  Then in the function(s) declarations, you set `Environment` to point at these parameters.  Confused yet?
+
+When it comes time for deployment - you can override these parameters to whatever values you want:
+`sam deploy --parameter-overrides TileCacheBucket=some-other-bucket`
+
+While this works, it's a bit kludgy when dealing with multiple parameters.  I've adopted a strategy I found in [this issue](https://github.com/aws/aws-sam-cli/issues/2054) - which involves is to creating an .env file at the project root with all CloudFormation Parameters.  And then the deploy command looks like:  `sam deploy --parameter-overrides $(cat .env)`
+
+
+A final note about the CloudFormation Parameters.  They **MUST** have some value.
+
+
 #### Enable/Disable S3 Backed Tile Cache
 Tile caching has many pros & cons.  For that reason, there is an **_optional_** capability to cache all tiles generated by the Lambda function into a S3 bucket.
 
-In the template.yaml there exists a [CloudFormation Parameter](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html) `S3CacheBucketName`.
- - To **enable** tile caching, the Default value of this parameter should be an existing S3 Bucket name owned by the same AWS account deploying the Lambda function.
- - To **disable** tile caching, set the Default value of this parameter to a string that is not equal to any S3 Bucket names in the AWS account deploying the Lambda function.  **NOTE:** Per the CloudFormation Parameter spec - there must be a value - so don't attempt to use an empty string here
+In the template.yaml there exists a `TileCacheBucket`.
+ - To **enable** tile caching, the value of this parameter should be an existing S3 Bucket name owned by the same AWS account deploying the Lambda function.
+ - To **disable** tile caching, set the value of this parameter to a string that is not equal to any S3 Bucket names in the AWS account deploying the Lambda function.  **NOTE:** Per the CloudFormation Parameter spec - there must be a value - so don't attempt to use an empty string here
 
-
+### Deploying with AWS SAM CLI
 Since the project uses AWS SAM CLI - deployment is very simple:
 
-    rm -R .aws-sam && poetry export --without-hashes -o requirements.txt && sam build && rm requirements.txt && sam deploy
+    rm -f -R .aws-sam && sam build && sam deploy --parameter-overrides $(cat .env)
 
  Assuming a successful deployment - you should see something like this in your terminal.
 
     CloudFormation outputs from deployed stack
-    -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     Outputs
-    -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    Key                 NAIPTileCache
-    Description         NAIPTileCache S3 Bucket
-    Value               aws-naip-tile-server-naiptilecache-1ke1562nf5zig
-
-    Key                 NAIPLambdaIamRole
-    Description         NAIPLambdaRole ARN
-    Value               arn:aws:iam::109906859411:role/aws-naip-tile-server-NAIPLambdaRole-EHD9DVRX3OOB
-
+    -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     Key                 NAIPTileFunction
     Description         NAIPTileFunction Lambda Function ARN
     Value               arn:aws:lambda:us-west-2:109906859411:function:get-naip-tile
 
+    Key                 NAIPLambdaIamRole
+    Description         NAIPLambdaRole ARN
+    Value               arn:aws:iam::109906859411:role/aws-naip-tile-server-NAIPLambdaRole-1FSITKOVU4EP7
+
+    Key                 DownscaleMaxZoom
+    Description         DownscaleMaxZoom
+    Value               11
+
+    Key                 UpscaleMinZoom
+    Description         UpscaleMinZoom
+    Value               19
+
+    Key                 RescalingEnabled
+    Description         RescalingEnabled
+    Value               TRUE
+
+    Key                 TileCacheBucket
+    Description         TileCacheBucket
+    Value               aws-naip-tile-server-cache
+
     Key                 NAIPTileApi
     Description         API Gateway endpoint URL for Prod stage for NAIPTileFunction
-    Value               https://dxw60vz69c.execute-api.us-west-2.amazonaws.com/prod/tile
-    -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    Successfully created/updated stack - aws-naip-tile-server in us-west-2
+    Value               https://1j7kwcy3r0.execute-api.us-west-2.amazonaws.com/prod/tile
+
+    Key                 ImageFormat
+    Description         ImageFormat
+    Value               JPEG
+    -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Of particular importance is the `NAIPTileApi` key.  This is the tile api...
 
 ## Usage
-**NOTE:**  If a request is made for a tile where there is no NAIP imagery for the specific year requested, a HTTP 404 Not Found response status code will be returned by the Lambda function
 
 ### HTTP API
 
     https://{XYZTileApi.Value}/prod/tile/{year}/{z}/{y}/{x}
-	https://dxw60vz69c.execute-api.us-west-2.amazonaws.com/prod/tile/2021/11/776/425
+	https://1j7kwcy3r0.execute-api.us-west-2.amazonaws.com/prod/tile/2021/11/776/425
 
 ### Python + boto3
 
@@ -181,7 +235,9 @@ It's possible that multiple requests for the same tile could be made at the same
 ### Degrading Performance for Lower Zoom Levels
 NAIP imagery in the `naip-visualization` S3 bucket have full-resolution data with 5 levels of overviews. This means that NAIP data can be read most efficiently at six zoom levels, in this case zooms 12-17.  Once we drop below zoom level 12, many images need to be combined and downsampled **on the fly**.  For example, to create an image for a single zoom 6 tile, you'd need to read _4,096_ times more data at level 12, then downsample.  In my opinion, NAIP is not particularly great for low zoom levels; it often appears patchy because of the many different collects and/or mixed resolutions of collects.  So I often use other imagery basemaps for lower level zooms.
 
-One workaround for this is to cache lower zoom levels (<12) using the [seed-cache](#seed-cache) command in the [Admin CLI](#admin-cli)
+Some Possible Workarounds:
+- Set `MinZoomLevel` Parameter to conservative zoom level (Default is 10).  This can be thought of as a 'guard rail' to prevent tile requests that would require accessing hundreds (or greater) of NAIP geotiffs
+- Cache lower zoom levels (<12) using the [seed-cache](#seed-cache) command in the [Admin CLI](#admin-cli)
 ### Spatial Queries on Bundled Parquet File
 When a tile is requested, a spatial query is necessary to determine what geotiffs intersect the tile's geometry.  In the current implementation, a parquet index file is bundled in the `src.data` module and used for this purpose.  I chose this approach vs maintaining an index in a separate database of some sort - for simplicity's sake.  I'm fairly confident a spatial query executed against a postgis table would complete quicker than the equivalent parquet query.  So if/when the time comes to chase maximum performance - this is a good place to start...
 ### Inefficient AWS Lambda Usage

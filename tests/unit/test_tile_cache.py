@@ -33,7 +33,7 @@ def s3_tile_cache():
 def tile_image():
     """Return random tile sized image."""
     imarray = np.random.rand(256, 256, 3) * 255
-    return Image.fromarray(imarray.astype("uint8")).convert("RGB")
+    return Image.fromarray(imarray.astype("uint8")).convert("RGBA")
 
 
 def test_s3_save_tile(s3_tile_cache, tile_image):

@@ -7,7 +7,38 @@ from PIL import Image
 
 
 class TileCache(ABC):
-    """Abstract class for tile cache."""
+    """Base class for tile cache."""
+
+    def __init__(self, rescaling_enabled: bool = True, downscale_max_zoom: int = 11, upscale_min_zoom: int = 18):
+        """Initialize TileCache.
+
+        Parameters
+        ----------
+        rescaling_enabled: bool
+            Create missing tiles by rescaling cached tiles
+        downscale_max_zoom: int
+            Max zoom level where attempts to create missing tile from downscaling will kick in
+        upscale_min_zoom: int
+            Min zoom level where attempts to create missing tile from upscaling will kick in
+        """
+        self._rescaling_enabled = rescaling_enabled
+        self._downscale_max_zoom = downscale_max_zoom
+        self._upscale_min_zoom = upscale_min_zoom
+
+    @property
+    def downscale_max_zoom(self) -> int:
+        """Max zoom level where attempts to create missing tile from downscaling will kick in."""
+        return self._downscale_max_zoom
+
+    @property
+    def rescaling_enabled(self) -> bool:
+        """Create missing tiles by rescaling cached tiles."""
+        return self._rescaling_enabled
+
+    @property
+    def upscale_min_zoom(self) -> int:
+        """Min zoom level where attempts to create missing tile from upscaling will kick in."""
+        return self._upscale_min_zoom
 
     @abstractmethod
     def get_tile(self, x: int, y: int, z: int, year: int) -> Image:
@@ -80,6 +111,47 @@ class TileCache(ABC):
         """
         pass
 
+    @abstractmethod
+    def get_missing_tile_subset(self, tiles: list[mercantile.Tile], year: int) -> list[mercantile.Tile]:
+        """Efficiently find what tiles are missing in this cache from a large/deep list of tiles.
+
+        Parameters
+        ----------
+        tiles: list[mercantile.Tile]
+            list of tiles to check
+        year: int
+            naip year
+
+        Returns
+        -------
+        list[mercantile.Tile]
+            subset of tiles not found in cache
+
+        """
+        pass
+
+    @abstractmethod
+    def handle_null_tile(self, x: int, y: int, z: int, year: int) -> None:
+        """Handle null tile.  Will vary based on TileCache implementation.
+
+        Parameters
+        ----------
+        x: int
+            x coordinate of tile
+        y: int
+            y coordinate of tile
+        z: int
+            zoom level of tile
+        year: int
+            naip year
+
+        Returns
+        -------
+        None
+
+        """
+        pass
+
     def get_tile_from_downscaling(self, x: int, y: int, z: int, year: int) -> Image:
         """Create tile via merging & downscaling tiles from the next zoom level.
 
@@ -106,7 +178,7 @@ class TileCache(ABC):
                 return None
             children_tile_images.append(chile_tile_image)
 
-        downscaled_tile_img = Image.new("RGB", (512, 512))
+        downscaled_tile_img = Image.new("RGBA", (512, 512))
         downscaled_tile_img.paste(children_tile_images[0], (0, 0))
         downscaled_tile_img.paste(children_tile_images[1], (256, 0))
         downscaled_tile_img.paste(children_tile_images[3], (0, 256))
@@ -156,7 +228,9 @@ class TileCache(ABC):
 class S3TileCache(TileCache):
     """S3 implementation of TileCache."""
 
-    def __init__(self, bucket: str, downscale_max_zoom: int = 11, upscale_min_zoom: int = 18):
+    def __init__(
+        self, bucket: str, rescaling_enabled: bool = True, downscale_max_zoom: int = 11, upscale_min_zoom: int = 18
+    ):
         """Initialize S3TileCache instance.
 
         Parameters
@@ -170,14 +244,13 @@ class S3TileCache(TileCache):
             min zoom level where attempts to create missing tile from upscaling will
             kick-in.
         """
+        super(S3TileCache, self).__init__(rescaling_enabled, downscale_max_zoom, upscale_min_zoom)
         self.s3 = boto3.resource("s3").Bucket(bucket)
         if not self.s3.creation_date:
             raise ValueError(f"S3 Bucket: {bucket} not found")
-        self.downscale_max_zoom = downscale_max_zoom
-        self.upscale_min_zoom = upscale_min_zoom
 
     def _get_key(self, x: int, y: int, z: int, year: int):
-        return f"{year}/{z}/{y}/{x}.jpg"
+        return f"{year}/{z}/{y}/{x}.png"
 
     def get_tile(self, x: int, y: int, z: int, year: int) -> Image:
         """Get tile image from cache.
@@ -214,6 +287,30 @@ class S3TileCache(TileCache):
 
         return rescaled_tile
 
+    def handle_null_tile(self, x: int, y: int, z: int, year: int) -> None:
+        """Handle null tile.
+
+        To maximize efficacy of rescaling and prevent redundant,expensive calls to generate tiles where NAIP imagery
+        is not available, just save blank tiles
+        Parameters
+        ----------
+        x: int
+            x coordinate of tile
+        y: int
+            y coordinate of tile
+        z: int
+            zoom level of tile
+        year: int
+            naip year
+
+        Returns
+        -------
+        None
+
+        """
+        blank_tile = Image.new("RGBA", (256, 256), (255, 0, 0, 0))
+        self.save_tile(x, y, z, year, blank_tile)
+
     def save_tile(self, x: int, y: int, z: int, year: int, image: Image, is_rescaled: bool = False) -> None:
         """Save tile image to cache.
 
@@ -238,7 +335,7 @@ class S3TileCache(TileCache):
         """
         file_key = self._get_key(x, y, z, year)
         image_bytes = BytesIO()
-        image.save(image_bytes, format="JPEG")
+        image.save(image_bytes, format="PNG")
         self.s3.Object(key=file_key).put(
             Body=image_bytes.getvalue(),
             Metadata={"is_rescaled": "true"} if is_rescaled else {},
@@ -266,3 +363,27 @@ class S3TileCache(TileCache):
         """
         file_key = self._get_key(x, y, z, year)
         return len(list(self.s3.objects.filter(Prefix=file_key))) > 0
+
+    def get_missing_tile_subset(self, tiles: list[mercantile.Tile], year: int) -> list[mercantile.Tile]:
+        """Efficiently find what tiles are missing in this cache from a large/deep list of tiles.
+
+        Parameters
+        ----------
+        tiles: list[mercantile.Tile]
+            list of tiles to check
+        year: int
+            naip year
+
+        Returns
+        -------
+        list[mercantile.Tile]
+            subset of tiles not found in cache
+
+        """
+        inventory = set()
+        for obj in self.s3.objects.filter(Prefix=(str(year))):
+            if obj.key.endswith(".jpg"):
+                _, z, y, x = obj.key.split("/")
+                inventory.add((int(x.split(".")[0]), int(y), int(z)))
+
+        return list(filter(lambda tile: (tile.x, tile.y, tile.z) not in inventory, tiles))

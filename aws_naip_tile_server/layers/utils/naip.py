@@ -118,7 +118,14 @@ def _build_image(
 
                     composite_image[ul_y:lr_y, ul_x:lr_x, :] = crop_data
 
-    return Image.fromarray(composite_image)
+    # Add an alpha channel, fully opaque (255)
+    rgba = np.dstack((composite_image, np.zeros((height, width), dtype=np.uint8) + 255))
+    # Make mask of black pixels - mask is True where image is black
+    nodata_mask = (rgba[:, :, 0:3] == [0, 0, 0]).all(2)
+    # Make alpha channel pixels matched by mask into transparent ones
+    rgba[:, :, 3][nodata_mask] = 0
+    # Convert Numpy array back to PIL Image
+    return Image.fromarray(rgba)
 
 
 @cache

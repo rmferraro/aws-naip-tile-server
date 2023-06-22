@@ -23,13 +23,14 @@ def bbox_to_box(bbox: mercantile.Bbox) -> box:
     return box(bbox[0], bbox[1], bbox[2], bbox[3])
 
 
-def img_to_b64(image: Image) -> bytes:
+def img_to_b64(image: Image, format: str = "PNG") -> bytes:
     """base64 encode a PIL image.
 
     Parameters
     ----------
     image: PIL.image
         image to encode
+    format: str
 
     Returns
     -------
@@ -38,7 +39,11 @@ def img_to_b64(image: Image) -> bytes:
 
     """
     buffered = BytesIO()
-    image.save(buffered, format="JPEG")
+    if image.mode == "RGB" and format == "PNG":
+        image = image.convert("RGBA")
+    elif image.mode == "RGBA" and format == "JPEG":
+        image = image.convert("RGB")
+    image.save(buffered, format=format)
     return base64.b64encode(buffered.getvalue())
 
 
