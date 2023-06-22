@@ -5,11 +5,8 @@ from io import BytesIO
 import pytest
 from PIL import Image
 
-from aws_naip_tile_server.functions.get_naip_tile import (
-    _get_tile_server_config,
-    handler,
-)
-from aws_naip_tile_server.layers.utils.env import TileServerConfig
+from src.lambda_functions.get_naip_tile import _get_tile_server_config, handler
+from src.utils.env import TileServerConfig
 
 
 @pytest.fixture(scope="module")

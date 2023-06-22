@@ -17,9 +17,9 @@ from shapely import Geometry
 from shapely.geometry import box
 from shapely.ops import transform
 
-from aws_naip_tile_server.layers.utils.conversion import bbox_to_box
+from src.utils.conversion import bbox_to_box
 
-_naip_index_parquet = os.path.join(Path(__file__).parent.parent.parent, "data", "naip_index.parquet")
+_naip_index_parquet = os.path.join(Path(__file__).parent.parent, "data", "naip_index.parquet")
 _NAIP_INDEX_DF = pl.read_parquet(_naip_index_parquet)
 
 

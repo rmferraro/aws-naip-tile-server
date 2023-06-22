@@ -6,10 +6,7 @@ import pytest
 import requests
 from PIL import Image
 
-from aws_naip_tile_server.admin.utils.stack_info import (
-    get_is_stack_deployed,
-    get_stack_output_value,
-)
+from src.utils.stack_info import get_is_stack_deployed, get_stack_output_value
 
 pytestmark = pytest.mark.skipif(get_is_stack_deployed() is False, reason="AWS Stack not deployed")
 

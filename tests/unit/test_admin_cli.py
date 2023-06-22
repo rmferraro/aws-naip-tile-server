@@ -1,6 +1,6 @@
 from click.testing import CliRunner
 
-from aws_naip_tile_server.admin.commands.cache import seed
+from src.admin_cli.commands.cache import seed
 
 
 def test_seed_cache_missing_to_zoom():

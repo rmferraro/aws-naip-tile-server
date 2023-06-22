@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from aws_naip_tile_server.layers.utils.tile_cache import S3TileCache
+from src.utils.tile_cache import S3TileCache
 
 
 @pytest.fixture(scope="module")

@@ -5,7 +5,7 @@ description = ""
 authors = []
 readme = "README.md"
 packages = [
-    {include='aws_naip_tile_server'}
+    {include='src'}
 ]
 
 [tool.poetry.dependencies]
@@ -62,13 +62,15 @@ source = ["src"]
 
 [tool.coverage.run]
 branch = true
-source = ["aws_naip_tile_server"]
+source = ["src"]
 omit = [".*", "tests/*"]
 
 [tool.coverage.report]
 show_missing = true
 #fail_under = 100
 
+[tool.poetry.scripts]
+admin_cli = "src.admin_cli:cli"
 
 [build-system]
 requires = ["poetry-core"]

@@ -1,7 +1,7 @@
 import pytest
 from shapely import wkt
 
-from aws_naip_tile_server.layers.utils.naip import get_naip_geotiffs, get_tile
+from src.utils.naip import get_naip_geotiffs, get_tile
 
 
 @pytest.fixture

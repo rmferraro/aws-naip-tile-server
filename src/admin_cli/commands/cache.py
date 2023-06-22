@@ -7,15 +7,15 @@ import polars as pl
 from shapely import union_all, wkt
 from tqdm.asyncio import tqdm_asyncio
 
-from aws_naip_tile_server.admin.utils.stack_info import (
+from src.utils import logger
+from src.utils.conversion import bbox_to_box
+from src.utils.env import TileServerConfig
+from src.utils.naip import get_naip_geotiffs
+from src.utils.stack_info import (
     get_is_cache_enabled,
     get_is_stack_deployed,
     get_stack_output_value,
 )
-from aws_naip_tile_server.layers.utils import logger
-from aws_naip_tile_server.layers.utils.conversion import bbox_to_box
-from aws_naip_tile_server.layers.utils.env import TileServerConfig
-from aws_naip_tile_server.layers.utils.naip import get_naip_geotiffs
 
 pl.Config.set_tbl_rows(1000)
 pl.Config.set_tbl_hide_dataframe_shape(True)
@@ -108,6 +108,7 @@ def seed(from_zoom, to_zoom, years, coverage, dry_run):
                 cache_tileset["tiles"] = cache.get_missing_tile_subset(tiles, year)
             else:
                 cache_tileset["tiles"] = tiles
+            cache_tilesets.append(cache_tileset)
 
         cache_summary_df = pl.DataFrame(
             [
@@ -121,6 +122,7 @@ def seed(from_zoom, to_zoom, years, coverage, dry_run):
                 for r in cache_tilesets
             ]
         )
+
         logger.info(f"{year} Cache Summary:\n{cache_summary_df}")
 
         if not dry_run:

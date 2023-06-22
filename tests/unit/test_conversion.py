@@ -1,6 +1,6 @@
 import mercantile
 
-from aws_naip_tile_server.layers.utils.conversion import bbox_to_box, val_to_type
+from src.utils.conversion import bbox_to_box, val_to_type
 
 
 def test_bbox_to_box():

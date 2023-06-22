@@ -1,7 +1,7 @@
 import os
 
-from aws_naip_tile_server.layers.utils import logger
-from aws_naip_tile_server.layers.utils.tile_cache import S3TileCache, TileCache
+from src.utils import logger
+from src.utils.tile_cache import S3TileCache, TileCache
 
 
 class TileServerConfig:
