@@ -101,8 +101,14 @@ def test_s3_upscale_tile_null(s3_tile_cache, tile_image):
     assert tile_image is None
 
 
-#
-# def test_s3_save_rescaled_tile(s3_tile_cache, tile_image):
-#     """Test confirms saving tile with is_rescaled metadata works."""
-#     s3_tile_cache.save_tile(1, 2, 3, 2099, tile_image, is_rescaled=True)
-#     assert s3_tile_cache.contains_tile(1, 2, 3, 2099)
+def test_s3_save_rescaled_tile_metadata(s3_tile_cache, tile_image):
+    """Test confirms saving tile with is_rescaled metadata works."""
+    tile = mercantile.Tile(1, 2, 3)
+    s3_tile_cache.save_tile_image(tile, 2099, tile_image, is_rescaled=True)
+    assert s3_tile_cache.contains_tile_image(tile, 2099)
+    tile_key = s3_tile_cache._get_key(tile, 2099)
+    s3_obj = s3_tile_cache.s3.Object(tile_key)
+    metadata = s3_obj.metadata
+    is_rescaled_key = next((k for k in metadata.keys() if "is_rescaled" in k), None)
+    assert is_rescaled_key
+    assert metadata[is_rescaled_key]
