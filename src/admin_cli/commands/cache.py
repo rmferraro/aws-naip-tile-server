@@ -84,6 +84,10 @@ def _seed_preflight_check(from_zoom, to_zoom, _years, _coverage, dry_run):
 def seed(from_zoom, to_zoom, years, coverage, dry_run):
     """Seed Tile Cache for specific areas/years."""
     _seed_preflight_check(from_zoom, to_zoom, years, coverage, dry_run)
+
+    cache = TileServerConfig.from_env().tile_cache
+    cache_tilesets = []
+
     for year in years:
         tileable_geotiffs = get_naip_geotiffs(coverage, year)
         logger.info(f"{len(tileable_geotiffs)} tileable geotiffs found for year: {year}")
@@ -93,8 +97,6 @@ def seed(from_zoom, to_zoom, years, coverage, dry_run):
         tileable_geotiff_coverage = union_all([gt.get_extent() for gt in tileable_geotiffs])
 
         # cache zoom levels in descending order to maximize downscaling of existing tiles
-        cache = TileServerConfig.from_env().tile_cache
-        cache_tilesets = []
         for zoom in sorted(range(from_zoom, to_zoom + 1), reverse=True):
             west, south, east, north = tileable_geotiff_coverage.bounds
             tiles = []
@@ -110,26 +112,26 @@ def seed(from_zoom, to_zoom, years, coverage, dry_run):
                 cache_tileset["tiles"] = tiles
             cache_tilesets.append(cache_tileset)
 
-        cache_summary_df = pl.DataFrame(
-            [
-                {
-                    "Year": r["year"],
-                    "Zoom Level": r["zoom"],
-                    "Total Tiles": r["total tiles"],
-                    "Cached Tiles": r["total tiles"] - len(r["tiles"]),
-                    "Missing Tiles": len(r["tiles"]),
-                }
-                for r in cache_tilesets
-            ]
-        )
+    cache_summary_df = pl.DataFrame(
+        [
+            {
+                "Year": r["year"],
+                "Zoom Level": r["zoom"],
+                "Total Tiles": r["total tiles"],
+                "Cached Tiles": r["total tiles"] - len(r["tiles"]),
+                "Missing Tiles": len(r["tiles"]),
+            }
+            for r in cache_tilesets
+        ]
+    )
 
-        logger.info(f"{year} Cache Summary:\n{cache_summary_df}")
+    logger.info(f"Cache Summary:\n{cache_summary_df}")
 
-        if not dry_run:
-            for cache_tileset in cache_tilesets:
-                info_msg = (
-                    f"start seeding year: {cache_tileset['year']}, zoom: {cache_tileset['zoom']}, tiles: "
-                    f"{len(cache_tileset['tiles'])}"
-                )
-                logger.info(info_msg)
-                _seed_tiles_by_year(cache_tileset["tiles"], cache_tileset["year"])
+    if not dry_run:
+        for cache_tileset in cache_tilesets:
+            info_msg = (
+                f"start seeding year: {cache_tileset['year']}, zoom: {cache_tileset['zoom']}, tiles: "
+                f"{len(cache_tileset['tiles'])}"
+            )
+            logger.info(info_msg)
+            _seed_tiles_by_year(cache_tileset["tiles"], cache_tileset["year"])
