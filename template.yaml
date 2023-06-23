@@ -43,6 +43,7 @@ Parameters:
   TileCacheBucket:
     Type: String
     Description: Name of S3 bucket to be used as tile cache
+    Default: none
 
 Resources:
   NAIPLambdaRole:
