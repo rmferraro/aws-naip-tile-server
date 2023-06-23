@@ -1,5 +1,7 @@
 from functools import lru_cache
 
+import mercantile
+
 import src.utils.conversion as conversion
 import src.utils.naip as naip
 from src.utils.env import TileServerConfig
@@ -56,16 +58,17 @@ def handler(event: dict, _context: object) -> dict:
     if z < tile_server_config.min_zoom or z > tile_server_config.max_zoom:
         return {"statusCode": 400, "body": None, "isBase64Encoded": False}
 
+    tile = mercantile.Tile(x, y, z)
     if tile_server_config.tile_cache:
-        tile_image = tile_server_config.tile_cache.get_tile(x, y, z, year)
+        tile_image = tile_server_config.tile_cache.get_tile_image(tile, year)
         if not tile_image:
-            tile_image = naip.get_tile(z, y, x, year)
+            tile_image = naip.get_tile_image(tile, year)
             if tile_image:
-                tile_server_config.tile_cache.save_tile(x, y, z, year, tile_image)
+                tile_server_config.tile_cache.save_tile_image(tile, year, tile_image)
             else:
-                tile_server_config.tile_cache.handle_null_tile(x, y, z, year)
+                tile_server_config.tile_cache.handle_null_tile_image(tile, year)
     else:
-        tile_image = naip.get_tile(z, y, x, year)
+        tile_image = naip.get_tile_image(tile, year)
 
     if tile_image:
         b64_tile = conversion.img_to_b64(tile_image, tile_server_config.image_format)

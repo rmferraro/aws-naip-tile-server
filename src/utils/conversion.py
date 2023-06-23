@@ -4,10 +4,10 @@ from typing import Any
 
 import mercantile
 from PIL import Image
-from shapely.geometry import box
+from shapely.geometry import Polygon, box
 
 
-def bbox_to_box(bbox: mercantile.Bbox) -> box:
+def bbox_to_box(bbox: mercantile.Bbox) -> Polygon:
     """Convert mercantile.Bbox to shapely.box.
 
     Parameters
@@ -17,7 +17,7 @@ def bbox_to_box(bbox: mercantile.Bbox) -> box:
 
     Returns
     -------
-    shapely.box
+    Polygon
         converted bbox
     """
     return box(bbox[0], bbox[1], bbox[2], bbox[3])

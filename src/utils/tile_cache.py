@@ -41,17 +41,13 @@ class TileCache(ABC):
         return self._upscale_min_zoom
 
     @abstractmethod
-    def get_tile(self, x: int, y: int, z: int, year: int) -> Image:
+    def get_tile_image(self, tile: mercantile.Tile, year: int) -> Image:
         """Get tile image from cache.
 
         Parameters
         ----------
-        x: int
-            x coordinate of tile
-        y: int
-            y coordinate of tile
-        z: int
-            zoom level of tile
+        tile: mercantile.Tile
+            mercator slippy-map tile
         year: int
             naip year
 
@@ -64,17 +60,13 @@ class TileCache(ABC):
         pass
 
     @abstractmethod
-    def save_tile(self, x: int, y: int, z: int, year: int, image: Image, is_rescaled: bool = False) -> None:
+    def save_tile_image(self, tile: mercantile.Tile, year: int, image: Image, is_rescaled: bool = False) -> None:
         """Save tile image to cache.
 
         Parameters
         ----------
-        x: int
-            x coordinate of tile
-        y: int
-            y coordinate of tile
-        z: int
-            zoom level of tile
+        tile: mercantile.Tile
+            mercator slippy-map tile
         year: int
             naip year
         image: Image
@@ -89,17 +81,13 @@ class TileCache(ABC):
         pass
 
     @abstractmethod
-    def contains_tile(self, x: int, y: int, z: int, year: int) -> bool:
-        """Checks if tile exists in cache.
+    def contains_tile_image(self, tile: mercantile.Tile, year: int) -> bool:
+        """Checks if tile image exists in cache.
 
         Parameters
         ----------
-        x: int
-            x coordinate of tile
-        y: int
-            y coordinate of tile
-        z: int
-            zoom level of tile
+        tile: mercantile.Tile
+            mercator slippy-map tile
         year: int
             naip year
 
@@ -112,8 +100,8 @@ class TileCache(ABC):
         pass
 
     @abstractmethod
-    def get_missing_tile_subset(self, tiles: list[mercantile.Tile], year: int) -> list[mercantile.Tile]:
-        """Efficiently find what tiles are missing in this cache from a large/deep list of tiles.
+    def get_missing_tile_images(self, tiles: list[mercantile.Tile], year: int) -> list[mercantile.Tile]:
+        """Efficiently find what tile images are missing in this cache from a large/deep list of tiles.
 
         Parameters
         ----------
@@ -131,17 +119,13 @@ class TileCache(ABC):
         pass
 
     @abstractmethod
-    def handle_null_tile(self, x: int, y: int, z: int, year: int) -> None:
-        """Handle null tile.  Will vary based on TileCache implementation.
+    def handle_null_tile_image(self, tile: mercantile.Tile, year: int) -> None:
+        """Handle null tile image.  Will vary based on TileCache implementation.
 
         Parameters
         ----------
-        x: int
-            x coordinate of tile
-        y: int
-            y coordinate of tile
-        z: int
-            zoom level of tile
+        tile: mercantile.Tile
+            mercator slippy-map tile
         year: int
             naip year
 
@@ -152,17 +136,13 @@ class TileCache(ABC):
         """
         pass
 
-    def get_tile_from_downscaling(self, x: int, y: int, z: int, year: int) -> Image:
-        """Create tile via merging & downscaling tiles from the next zoom level.
+    def get_tile_image_from_downscaling(self, tile: mercantile.Tile, year: int) -> Image:
+        """Create tile image via merging & downscaling tiles from the next zoom level.
 
         Parameters
         ----------
-        x: int
-            x coordinate of tile
-        y: int
-            y coordinate of tile
-        z: int
-            zoom level of tile
+        tile: mercantile.Tile
+            mercator slippy-map tile
         year: int
             naip year
 
@@ -172,8 +152,8 @@ class TileCache(ABC):
             image if downscaling was possible, None otherwise
         """
         children_tile_images = []
-        for child_tile in mercantile.children(x, y, z):
-            chile_tile_image = self.get_tile(child_tile.x, child_tile.y, child_tile.z, year)
+        for child_tile in mercantile.children(tile):
+            chile_tile_image = self.get_tile_image(child_tile, year)
             if not chile_tile_image:
                 return None
             children_tile_images.append(chile_tile_image)
@@ -185,17 +165,13 @@ class TileCache(ABC):
         downscaled_tile_img.paste(children_tile_images[2], (256, 256))
         return downscaled_tile_img.resize((256, 256))
 
-    def get_tile_from_upscaling(self, x: int, y: int, z: int, year: int) -> Image:
-        """Create tile via cropping & upscaling the tile from the previous zoom level.
+    def get_tile_image_from_upscaling(self, tile: mercantile.Tile, year: int) -> Image:
+        """Create tile image via cropping & upscaling the tile from the previous zoom level.
 
         Parameters
         ----------
-        x: int
-            x coordinate of tile
-        y: int
-            y coordinate of tile
-        z: int
-            zoom level of tile
+        tile: mercantile.Tile
+            mercator slippy-map tile
         year: int
             naip year
 
@@ -204,14 +180,14 @@ class TileCache(ABC):
         Image
             image if upscaling was possible, None otherwise
         """
-        parent_tile = mercantile.parent(x, y, z)
-        parent_tile_image = self.get_tile(parent_tile.x, parent_tile.y, parent_tile.z, year)
+        parent_tile = mercantile.parent(tile)
+        parent_tile_image = self.get_tile_image(parent_tile, year)
         if not parent_tile_image:
             # cant do anything without the parent tile...
             return None
 
         # determine what region in the parent tile that should be cropped
-        quadrant = mercantile.children(parent_tile).index(mercantile.Tile(x, y, z))
+        quadrant = mercantile.children(parent_tile).index(tile)
         if quadrant == 0:
             crop_region = (0, 0, 128, 128)
         elif quadrant == 1:
@@ -249,20 +225,16 @@ class S3TileCache(TileCache):
         if not self.s3.creation_date:
             raise ValueError(f"S3 Bucket: {bucket} not found")
 
-    def _get_key(self, x: int, y: int, z: int, year: int):
-        return f"{year}/{z}/{y}/{x}.png"
+    def _get_key(self, tile: mercantile.Tile, year: int):
+        return f"{year}/{tile.z}/{tile.y}/{tile.x}.png"
 
-    def get_tile(self, x: int, y: int, z: int, year: int) -> Image:
+    def get_tile_image(self, tile: mercantile.Tile, year: int) -> Image:
         """Get tile image from cache.
 
         Parameters
         ----------
-        x: int
-            x coordinate of tile
-        y: int
-            y coordinate of tile
-        z: int
-            zoom level of tile
+        tile: mercantile.Tile
+            mercator slippy-map tile
         year: int
             naip year
 
@@ -272,34 +244,30 @@ class S3TileCache(TileCache):
             image if tile found in cache, None if not
 
         """
-        if self.contains_tile(x, y, z, year):
-            file_key = self._get_key(x, y, z, year)
+        if self.contains_tile_image(tile, year):
+            file_key = self._get_key(tile, year)
             image_bytes = BytesIO(self.s3.Object(key=file_key).get()["Body"].read())
             return Image.open(image_bytes)
 
         rescaled_tile = None
-        if z <= self.downscale_max_zoom:
-            rescaled_tile = self.get_tile_from_downscaling(x, y, z, year)
-        elif z >= self.upscale_min_zoom:
-            rescaled_tile = self.get_tile_from_upscaling(x, y, z, year)
+        if tile.z <= self.downscale_max_zoom:
+            rescaled_tile = self.get_tile_image_from_downscaling(tile, year)
+        elif tile.z >= self.upscale_min_zoom:
+            rescaled_tile = self.get_tile_image_from_upscaling(tile, year)
         if rescaled_tile:
-            self.save_tile(x, y, z, year, rescaled_tile, is_rescaled=True)
+            self.save_tile_image(tile, year, rescaled_tile, is_rescaled=True)
 
         return rescaled_tile
 
-    def handle_null_tile(self, x: int, y: int, z: int, year: int) -> None:
-        """Handle null tile.
+    def handle_null_tile_image(self, tile: mercantile.Tile, year: int) -> None:
+        """Handle null tile image.
 
         To maximize efficacy of rescaling and prevent redundant,expensive calls to generate tiles where NAIP imagery
         is not available, just save blank tiles
         Parameters
         ----------
-        x: int
-            x coordinate of tile
-        y: int
-            y coordinate of tile
-        z: int
-            zoom level of tile
+        tile: mercantile.Tile
+            mercator slippy-map tile
         year: int
             naip year
 
@@ -309,19 +277,15 @@ class S3TileCache(TileCache):
 
         """
         blank_tile = Image.new("RGBA", (256, 256), (255, 0, 0, 0))
-        self.save_tile(x, y, z, year, blank_tile)
+        self.save_tile_image(tile, year, blank_tile)
 
-    def save_tile(self, x: int, y: int, z: int, year: int, image: Image, is_rescaled: bool = False) -> None:
+    def save_tile_image(self, tile: mercantile.Tile, year: int, image: Image, is_rescaled: bool = False) -> None:
         """Save tile image to cache.
 
         Parameters
         ----------
-        x: int
-            x coordinate of tile
-        y: int
-            y coordinate of tile
-        z: int
-            zoom level of tile
+        tile: mercantile.Tile
+            mercator slippy-map tile
         year: int
             naip year
         image: Image
@@ -333,7 +297,7 @@ class S3TileCache(TileCache):
         -------
             None
         """
-        file_key = self._get_key(x, y, z, year)
+        file_key = self._get_key(tile, year)
         image_bytes = BytesIO()
         image.save(image_bytes, format="PNG")
         self.s3.Object(key=file_key).put(
@@ -341,17 +305,13 @@ class S3TileCache(TileCache):
             Metadata={"is_rescaled": "true"} if is_rescaled else {},
         )
 
-    def contains_tile(self, x: int, y: int, z: int, year: int) -> bool:
-        """Checks if tile exists in cache.
+    def contains_tile_image(self, tile: mercantile.Tile, year: int) -> bool:
+        """Checks if tile image exists in cache.
 
         Parameters
         ----------
-        x: int
-            x coordinate of tile
-        y: int
-            y coordinate of tile
-        z: int
-            zoom level of tile
+        tile: mercantile.Tile
+            mercator slippy-map tile
         year: int
             naip year
 
@@ -361,11 +321,11 @@ class S3TileCache(TileCache):
             True if tile exists, False if not exists
 
         """
-        file_key = self._get_key(x, y, z, year)
+        file_key = self._get_key(tile, year)
         return len(list(self.s3.objects.filter(Prefix=file_key))) > 0
 
-    def get_missing_tile_subset(self, tiles: list[mercantile.Tile], year: int) -> list[mercantile.Tile]:
-        """Efficiently find what tiles are missing in this cache from a large/deep list of tiles.
+    def get_missing_tile_images(self, tiles: list[mercantile.Tile], year: int) -> list[mercantile.Tile]:
+        """Efficiently find what tile images are missing in this cache from a large/deep list of tiles.
 
         Parameters
         ----------

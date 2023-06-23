@@ -1,7 +1,8 @@
+import mercantile
 import pytest
 from shapely import wkt
 
-from src.utils.naip import get_naip_geotiffs, get_tile
+from src.utils.naip import get_naip_geotiffs, get_tile_image
 
 
 @pytest.fixture
@@ -12,12 +13,14 @@ def sample_aoi():
 
 
 def test_get_valid_tile():
-    tile_image = get_tile(11, 776, 425, 2021)
+    tile = mercantile.Tile(425, 776, 11)
+    tile_image = get_tile_image(tile, 2021)
     assert tile_image is not None
 
 
 def test_get_invalid_tile():
-    tile_image = get_tile(11, 425, 776, 2021)
+    tile = mercantile.Tile(776, 425, 11)
+    tile_image = get_tile_image(tile, 2021)
     assert tile_image is None
 
 

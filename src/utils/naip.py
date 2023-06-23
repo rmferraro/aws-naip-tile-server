@@ -195,17 +195,13 @@ def get_naip_geotiffs(coverage: Geometry = None, year: int = None, epsg: int = 4
     return geotiffs
 
 
-def get_tile(z: int, y: int, x: int, year: int) -> Image:
+def get_tile_image(tile: mercantile.Tile, year: int) -> Image:
     """Get a NAIP slippy map tile for a specific year.
 
     Parameters
     ----------
-    z: int
-        zoom level of tile
-    y: int
-        y coordinate of tile
-    x: int
-        x coordinate of tile
+    tile: mercantile.Tile
+        mercator slippy-map tile
     year: int
         NAIP imagery year
 
@@ -215,5 +211,5 @@ def get_tile(z: int, y: int, x: int, year: int) -> Image:
         a tile image, or None if imagery not available for tile for specific year
 
     """
-    tile_box = bbox_to_box(mercantile.xy_bounds(x, y, z))
+    tile_box = bbox_to_box(mercantile.xy_bounds(tile))
     return _build_image(tile_box, year)
