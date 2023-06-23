@@ -16,20 +16,22 @@ def tile_base_uri():
     return get_stack_output_value("NAIPTileApi")
 
 
-def test_get_valid_tile_via_api(tile_base_uri):
+def test_tile_image_with_naip_coverage_via_api(tile_base_uri):
+    """Test confirms API gateway returns valid image for a tile with NAIP coverage."""
     r = requests.get(f"{tile_base_uri}/2021/11/776/425")
     assert r.status_code == 200
 
 
-def test_get_invalid_tile_via_api(tile_base_uri):
+def test_tile_image_without_naip_coverage_via_api(tile_base_uri, helpers):
+    """Test confirms API gateway returns blank image for a tile without NAIP coverage."""
     r = requests.get(f"{tile_base_uri}/2021/11/425/776")
     assert r.status_code == 200
     img = Image.open(BytesIO(r.content))
-    extrema = img.convert("L").getextrema()
-    assert extrema[0] == extrema[1]
+    assert helpers.is_blank_image(img)
 
 
-def test_get_valid_tile_via_boto():
+def test_tile_image_with_naip_coverage_via_boto():
+    """Test confirms invoking Lambda via boto3 returns valid image for a tile with NAIP coverage."""
     client = boto3.client("lambda")
     payload = {"year": 2021, "x": 425, "y": 776, "z": 11}
     response = client.invoke(
@@ -42,7 +44,8 @@ def test_get_valid_tile_via_boto():
     assert response_payload["isBase64Encoded"] is True
 
 
-def test_get_invalid_tile_via_boto():
+def test_tile_image_without_naip_coverage_via_boto(helpers):
+    """Test confirms invoking Lambda via boto3 returns blank image for a tile without NAIP coverage."""
     client = boto3.client("lambda")
     payload = {"year": 2021, "x": 776, "y": 425, "z": 11}
     response = client.invoke(
@@ -52,3 +55,6 @@ def test_get_invalid_tile_via_boto():
     )
     response_payload = json.loads(response["Payload"].read())
     assert response_payload["statusCode"] == 200
+    tile_image = helpers.decode_b64_image(response_payload["body"])
+    assert tile_image is not None
+    assert helpers.is_blank_image(tile_image)

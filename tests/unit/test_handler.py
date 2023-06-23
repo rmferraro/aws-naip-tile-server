@@ -1,9 +1,6 @@
-import base64
 import os
-from io import BytesIO
 
 import pytest
-from PIL import Image
 
 from src.lambda_functions.get_naip_tile import _get_tile_server_config, handler
 from src.utils.env import TileServerConfig
@@ -20,13 +17,13 @@ def test_tile_image_with_naip_coverage_via_event():
     assert result["statusCode"] == 200
 
 
-def test_tile_image_without_naip_coverage_via_event():
+def test_tile_image_without_naip_coverage_via_event(helpers):
     """Test confirms Lambda handler (via event) returns blank tile image for a tile without NAIP coverage."""
     result = handler({"x": 776, "y": 425, "z": 11, "year": 2021}, {})
     assert result["statusCode"] == 200
-    tile_image = Image.open(BytesIO(base64.b64decode(result["body"])))
-    extrema = tile_image.convert("L").getextrema()
-    assert extrema[0] == extrema[1]
+    tile_image = helpers.decode_b64_image(result["body"])
+    assert tile_image is not None
+    assert helpers.is_blank_image(tile_image)
 
 
 def test_tile_image_with_naip_coverage_via_path_params():
@@ -36,14 +33,14 @@ def test_tile_image_with_naip_coverage_via_path_params():
     assert result["statusCode"] == 200
 
 
-def test_tile_image_without_naip_coverage_via_path_params():
+def test_tile_image_without_naip_coverage_via_path_params(helpers):
     """Test confirms Lambda handler (via path params) returns blank tile image for a tile without NAIP coverage."""
     event = {"pathParameters": {"x": 776, "y": 425, "z": 11, "year": 2021}}
     result = handler(event, {})
     assert result["statusCode"] == 200
-    tile_image = Image.open(BytesIO(base64.b64decode(result["body"])))
-    extrema = tile_image.convert("L").getextrema()
-    assert extrema[0] == extrema[1]
+    tile_image = helpers.decode_b64_image(result["body"])
+    assert tile_image is not None
+    assert helpers.is_blank_image(tile_image)
 
 
 def test_missing_parameters():
