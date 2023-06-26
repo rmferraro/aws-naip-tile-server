@@ -105,9 +105,9 @@ In the template.yaml there exists a `TileCacheBucket`.
  - To **disable** tile caching, set the value of this parameter to a string that is not equal to any S3 Bucket names in the AWS account deploying the Lambda function.  **NOTE:** Per the CloudFormation Parameter spec - there must be a value - so don't attempt to use an empty string here
 
 ### Deploying with AWS SAM CLI
-Since the project uses AWS SAM CLI - deployment is very simple:
+The [Admin CLI](#admin-CLI) provides a simple wrapper on top of AWS SAM CLI to deploy:
 
-    rm -f -R .aws-sam && sam build && sam deploy --parameter-overrides $(cat .env)
+    admin_cli deploy
 
  Assuming a successful deployment - you should see something like this in your terminal.
 
@@ -182,24 +182,57 @@ There is a CLI available to perform admin-like actions that I feel are best done
 If the poetry shell **isn't** activated - you'll need to use:
 `poetry run admin_cli --help`
 
-Output:
-
     Usage: admin_cli [OPTIONS] COMMAND [ARGS]...
 
-      CLI tool to perform admin actions
+      CLI tool to perform admin_cli actions
 
     Options:
       --help  Show this message and exit.
 
     Commands:
-      seed-cache  Seed Tile Cache for specific areas/years.
+      cache  Tile Cache related commands.
+      stack  AWS CloudFormation related commands.
 
-To get detailed info about specific commands:
-`poetry run admin_cli [@command] --help`
 
-Example output for `seed-cache` command
+At the top-level of the API, the commands are really command groups - where each group has 1-M commands for a specific area.  To see the subcommands available for each main command group:
+`poetry run admin_cli [@command-group] --help`
 
-    Usage: admin_cli seed-cache [OPTIONS]
+Example output for `stack` command group:
+
+    Usage: admin_cli stack [OPTIONS] COMMAND [ARGS]...
+
+      AWS CloudFormation related commands.
+
+    Options:
+      --help  Show this message and exit.
+
+    Commands:
+      delete  Delete aws-naip-tile-server AWS CloudFormation stack.
+      deploy  Deploy aws-naip-tile-server AWS CloudFormation stack.
+      status  Display basic info about deployed aws-naip-tile-server AWS...
+
+Then, to get detailed help about a specific command in a command group:
+`poetry run admin_cli [@command-group] [@command] --help`
+
+Example output for the `seed` command in the `cache` command-group:
+
+    Usage: admin_cli cache seed [OPTIONS]
+
+      Seed Tile Cache for specific areas/years.
+
+    Options:
+      --from_zoom INTEGER  Zoom level caching will start at
+      --to_zoom INTEGER    Zoom level caching will end at  [required]
+      -y, --years INTEGER  NAIP years to cache
+      --coverage TEXT      WKT geometry (WGS84) of ground area to cache tiles for
+      --dry-run            Only print summary of how many tiles would be cached
+      --help               Show this message and exit.
+### Command Groups
+
+#### cache
+
+##### seed
+    Usage: admin_cli cache seed [OPTIONS]
 
       Seed Tile Cache for specific areas/years.
 
@@ -211,24 +244,30 @@ Example output for `seed-cache` command
       --dry-run            Only print summary of how many tiles would be cached
       --help               Show this message and exit.
 
-### Commands
+#### stack
 
-#### seed-cache
+##### delete
+    Usage: admin_cli stack delete [OPTIONS]
 
-    Usage: admin_cli seed-cache [OPTIONS]
-
-      Seed Tile Cache for specific areas/years.
+      Delete aws-naip-tile-server AWS CloudFormation stack.
 
     Options:
-      --from_zoom INTEGER  Zoom level caching will start at
-      --to_zoom INTEGER    Zoom level caching will end at  [required]
-      -y, --years INTEGER  NAIP years to cache
-      --coverage TEXT      WKT geometry (WGS84) of ground area to cache tiles for
-      --dry-run            Only print summary of how many tiles would be cached
-      --help               Show this message and exit.
+      --help  Show this message and exit.
+##### deploy
+    Usage: admin_cli stack deploy [OPTIONS]
 
-This command will seed S3TileCache for specific areas/years.  Caching lower zoom levels will mitigate this [known limitation](#degrading-performance-for-lower-zoom-levels)
+      Deploy aws-naip-tile-server AWS CloudFormation stack.
 
+    Options:
+      --help  Show this message and exit.
+##### status
+    Usage: admin_cli stack status [OPTIONS]
+
+      Display basic info about deployed aws-naip-tile-server AWS CloudFormation
+      stack.
+
+    Options:
+      --help  Show this message and exit.
 
 ## Known Limitations
 ### Only using `naip-visualization` bucket
@@ -236,11 +275,21 @@ My primary goal was to use NAIP imagery for a basemap, so the `naip-visualizatio
 ### Redundant Tile Creation
 It's possible that multiple requests for the same tile could be made at the same time. In the case the tile already exists in the s3 tile cache, there are no issues... But if the tile does not exist in the s3 tile cache, there would be redundant tile creation. The primary issue with redundant tile creation is increased lambda run time, which will cost more $$$. I currently perceive this to be a very minor potential issue... Even implementing some type of lock/wait to prevent redundant tile creation won't decrease lambda run time - because instead of building the tile - the lambda function will be running but idle...
 ### Degrading Performance for Lower Zoom Levels
-NAIP imagery in the `naip-visualization` S3 bucket have full-resolution data with 5 levels of overviews. This means that NAIP data can be read most efficiently at six zoom levels, in this case zooms 12-17.  Once we drop below zoom level 12, many images need to be combined and downsampled **on the fly**.  For example, to create an image for a single zoom 6 tile, you'd need to read _4,096_ times more data at level 12, then downsample.  In my opinion, NAIP is not particularly great for low zoom levels; it often appears patchy because of the many different collects and/or mixed resolutions of collects.  So I often use other imagery basemaps for lower level zooms.
+As zoom level decreases, the amount of ground area covered by a single tile increases significantly.  Consequently, the number of NAIP geotiffs that need to be accessed to build a tile also increases with decreasing zoom level.  The following table demonstrates this:
+
+| Zoom | Area (approx sq miles) | # NAIP Geotiffs | Tile (xyz)   |
+|------|------------------------|-----------------|--------------|
+| 14   | 2                      | 2               | 3376,6502,14 |
+| 12   | 37                     | 9               | 844,1625,12  |
+| 10   | 590                    | 42              | 211,406,10   |
+| 8    | 9462                   | 480             | 52,101,8     |
+
+Below zoom level 8, it is likely >1000 NAIP geotiffs need to be accessed to build a single tile, and performance really starts to tank...  In my opinion NAIP does not produce the most appealing basemaps at lower scales for a few reasons.  At this scale, you are likely looking at many different collects, in different states, at different resolutions.  The end result is basemap that is often patchy/blotchy in appearance.  So, I generally don't use NAIP for basemap for low level zooms, therefore it's not travesty that generating tiles < zoom level 8 is slow.
+
 
 Some Possible Workarounds:
-- Set `MinZoomLevel` Parameter to conservative zoom level (Default is 10).  This can be thought of as a 'guard rail' to prevent tile requests that would require accessing hundreds (or greater) of NAIP geotiffs
-- Cache lower zoom levels (<12) using the [seed-cache](#seed-cache) command in the [Admin CLI](#admin-cli)
+- Set `MinZoomLevel` Parameter to conservative zoom level (Default is 8).  This can be thought of as a 'guard rail' to prevent tile requests that would require accessing 1000+ NAIP geotiffs
+- Cache lower zoom levels using the [seed](#seed) command in the [Admin CLI](#admin-cli).
 ### Spatial Queries on Bundled Parquet File
 When a tile is requested, a spatial query is necessary to determine what geotiffs intersect the tile's geometry.  In the current implementation, a parquet index file is bundled in the `src.data` module and used for this purpose.  I chose this approach vs maintaining an index in a separate database of some sort - for simplicity's sake.  I'm fairly confident a spatial query executed against a postgis table would complete quicker than the equivalent parquet query.  So if/when the time comes to chase maximum performance - this is a good place to start...
 ### Inefficient AWS Lambda Usage
