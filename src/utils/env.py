@@ -33,13 +33,13 @@ class TileServerConfig:
     def from_env():
         """Create an instance of TileServerConfig from environment variables."""
         tile_server_config = TileServerConfig(
-            image_format=os.getenv("ImageFormat"),
-            max_zoom=int(os.getenv("MaxZoom")),
-            min_zoom=int(os.getenv("MinZoom")),
-            downscale_max_zoom=int(os.getenv("DownscaleMaxZoom")),
-            upscale_min_zoom=int(os.getenv("UpscaleMinZoom")),
-            rescaling_enabled=bool(os.getenv("RescalingEnabled")),
-            tile_cache_bucket=os.getenv("TileCacheBucket"),
+            image_format=os.getenv("IMAGE_FORMAT"),
+            max_zoom=int(os.getenv("MAX_ZOOM")),
+            min_zoom=int(os.getenv("MIN_ZOOM")),
+            downscale_max_zoom=int(os.getenv("DOWNSCALE_MAX_ZOOM")),
+            upscale_min_zoom=int(os.getenv("UPSCALE_MIN_ZOOM")),
+            rescaling_enabled=bool(os.getenv("RESCALING_ENABLED")),
+            tile_cache_bucket=os.getenv("TILE_CACHE_BUCKET"),
         )
         return tile_server_config
 
