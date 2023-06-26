@@ -1,6 +1,10 @@
 import logging
+from pathlib import Path
 
 import boto3
+
+ROOT_DIR = Path(__file__).parent.parent.parent
+
 
 # https://stackoverflow.com/questions/37703609/using-python-logging-with-aws-lambda
 # https://stackoverflow.com/questions/71119621/python-logging-in-aws-lambda
