@@ -305,10 +305,3 @@ For tiles that are already cached - calling the Lambda function seems inefficien
 I'm working on a no-frills UI to show how the tile server performs.  I'm not quite ready to share the code yet, but here is rough draft preview:
 
 https://github.com/rmferraro/aws-naip-tile-server/assets/4007906/92d55e0c-7bb6-45f8-8d96-83300f62674d
-
-
-
-
-
-
-
