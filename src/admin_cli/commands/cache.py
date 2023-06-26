@@ -65,7 +65,14 @@ def _seed_preflight_check(from_zoom, to_zoom, _years, _coverage, dry_run):
         raise click.ClickException(msg)
 
 
-@click.command()
+# Command Group
+@click.group
+def cache():
+    """Tile Cache related commands."""
+    pass
+
+
+@cache.command()
 @click.option("--from_zoom", type=int, default=0, help="Zoom level caching will start at")
 @click.option("--to_zoom", type=int, required=True, help="Zoom level caching will end at")
 @click.option(
