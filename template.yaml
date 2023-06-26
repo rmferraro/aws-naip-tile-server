@@ -107,13 +107,13 @@ Resources:
             ApiId: !Ref NAIPApi
       Environment:
         Variables:
-          ImageFormat: !Ref ImageFormat
-          MaxZoom: !Ref MaxZoom
-          MinZoom: !Ref MinZoom
-          DownscaleMaxZoom: !Ref DownscaleMaxZoom
-          UpscaleMinZoom: !Ref UpscaleMinZoom
-          RescalingEnabled: !Ref RescalingEnabled
-          TileCacheBucket: !Ref TileCacheBucket
+          IMAGE_FORMAT: !Ref ImageFormat
+          MAX_ZOOM: !Ref MaxZoom
+          MIN_ZOOM: !Ref MinZoom
+          DOWNSCALE_MAX_ZOOM: !Ref DownscaleMaxZoom
+          UPSCALE_MIN_ZOOM: !Ref UpscaleMinZoom
+          RESCALING_ENABLED: !Ref RescalingEnabled
+          TILE_CACHE_BUCKET: !Ref TileCacheBucket
 
 Outputs:
   NAIPTileApi:
@@ -140,3 +140,9 @@ Outputs:
   TileCacheBucket:
     Description: "TileCacheBucket"
     Value: !Ref TileCacheBucket
+  MinZoom:
+    Description: "MinZoom"
+    Value: !Ref MinZoom
+  MaxZoom:
+    Description: "MaxZoom"
+    Value: !Ref MaxZoom
