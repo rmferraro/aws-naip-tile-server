@@ -112,7 +112,7 @@ In the template.yaml there exists a `TileCacheBucket`.
 ### Deploying with AWS SAM CLI
 The [Admin CLI](#admin-CLI) provides a simple wrapper on top of AWS SAM CLI to deploy:
 
-    admin_cli deploy
+    admin_cli stack deploy
 
  Assuming a successful deployment - you should see something like this in your terminal.
 
@@ -301,7 +301,3 @@ When a tile is requested, a spatial query is necessary to determine what geotiff
 For tiles that are already cached - calling the Lambda function seems inefficient; why not just fetch the tile from S3 directly?  Particularly on cold starts - the extra latency (and Lambda $$$) is avoidable.
 
 
-## In Action
-I'm working on a no-frills UI to show how the tile server performs.  I'm not quite ready to share the code yet, but here is rough draft preview:
-
-https://github.com/rmferraro/aws-naip-tile-server/assets/4007906/92d55e0c-7bb6-45f8-8d96-83300f62674d
