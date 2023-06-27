@@ -299,5 +299,3 @@ Some Possible Workarounds:
 When a tile is requested, a spatial query is necessary to determine what geotiffs intersect the tile's geometry.  In the current implementation, a parquet index file is bundled in the `src.data` module and used for this purpose.  I chose this approach vs maintaining an index in a separate database of some sort - for simplicity's sake.  I'm fairly confident a spatial query executed against a postgis table would complete quicker than the equivalent parquet query.  So if/when the time comes to chase maximum performance - this is a good place to start...
 ### Inefficient AWS Lambda Usage
 For tiles that are already cached - calling the Lambda function seems inefficient; why not just fetch the tile from S3 directly?  Particularly on cold starts - the extra latency (and Lambda $$$) is avoidable.
-
-
