@@ -40,6 +40,7 @@ The purpose of this repository is to create a simple AWS Lambda function & API t
         - [Degrading Performance for Lower Zoom Levels](#degrading-performance-for-lower-zoom-levels)
         - [Spatial Queries on Bundled Parquet File](#spatial-queries-on-bundled-parquet-file)
         - [Inefficient AWS Lambda Usage](#inefficient-aws-lambda-usage)
+    - [naip-inspector-ui](#naip-inspector-ui)
 
 <!-- /TOC -->
 
@@ -299,3 +300,20 @@ Some Possible Workarounds:
 When a tile is requested, a spatial query is necessary to determine what geotiffs intersect the tile's geometry.  In the current implementation, a parquet index file is bundled in the `src.data` module and used for this purpose.  I chose this approach vs maintaining an index in a separate database of some sort - for simplicity's sake.  I'm fairly confident a spatial query executed against a postgis table would complete quicker than the equivalent parquet query.  So if/when the time comes to chase maximum performance - this is a good place to start...
 ### Inefficient AWS Lambda Usage
 For tiles that are already cached - calling the Lambda function seems inefficient; why not just fetch the tile from S3 directly?  Particularly on cold starts - the extra latency (and Lambda $$$) is avoidable.
+
+## naip-inspector-ui
+I've whipped up a no-frills map ui to help debug/asses the tile api.  To start it:
+`admin_cli naip-inspector-ui start-dev`
+
+This command is equivalent to:
+
+
+    cd naip-debugger-ui
+    npm install
+    npm run dev
+
+
+The default view will be zoomed out to view CONUS.  Not much is happening (yet) - but you can at least see which states have NAIP coverage by year.  To change years, simply pick another year from the dropdown.
+
+
+The map has a XYZ tile layer (pointing to the NAIPTileApi) - which its has min & max zooms set to match the Lambda configuration (i.e. template.yaml).  So since my currently configured min zoom = 8, the NAIP tiles won't start loading until I zoom to level 8 or higher.  When the NAIP tiles start loading, you will get a summary of tile loads (per zoom).  You will also see the XYZ tile boundaries with coordinates.
