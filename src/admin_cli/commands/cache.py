@@ -1,11 +1,12 @@
 import asyncio
+import math
 
 import aiohttp
 import click
 import mercantile
 import polars as pl
 from shapely import union_all, wkt
-from tqdm.asyncio import tqdm_asyncio
+from tqdm import tqdm
 
 from src.utils import logger
 from src.utils.conversion import bbox_to_box
@@ -28,12 +29,23 @@ def _seed_tiles_by_year(tiles: list[mercantile.Tile], year: int):
         url = f"{naip_tile_api_base_uri}/{year}/{tile.z}/{tile.y}/{tile.x}"
         await session.request("GET", url=url)
 
-    async def _seed_tiles_runner():
-        async with aiohttp.ClientSession() as session:
-            tasks = []
-            for t in tiles:
-                tasks.append(_invoke_get_naip_tile_lambda(session=session, tile=t, year=year))
-            await tqdm_asyncio.gather(*tasks)
+    async def _seed_tiles_runner(batch_size: int = 100):
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
+            pbar = tqdm(total=len(tiles))
+            batches = math.ceil(len(tiles) / batch_size)
+            for batch in range(batches):
+                batch_tiles = tiles[(batch * batch_size) : (batch * batch_size) + batch_size]
+                tasks = []
+                for t in batch_tiles:
+                    tasks.append(_invoke_get_naip_tile_lambda(session=session, tile=t, year=year))
+                for done in asyncio.as_completed(tasks):
+                    try:
+                        _ = await done
+                    except Exception:
+                        # ideally we can get the failed task tile and print that out
+                        pass
+                    pbar.update(1)
+            pbar.close()
 
     asyncio.run(_seed_tiles_runner())
 
