@@ -12,7 +12,9 @@ ignore =
     # D504 line break after binary operator
     W504,
     # An unused argument starting with an underscore
-    U101
+    U101,
+    # whitespace before ':'
+    E203
 per-file-ignores =
      tests/*: D103,
      src/utils/tile_cache.py: U100
