@@ -342,7 +342,7 @@ class S3TileCache(TileCache):
         """
         inventory = set()
         for obj in self.s3.objects.filter(Prefix=(str(year))):
-            if obj.key.endswith(".jpg"):
+            if obj.key.endswith(".png"):
                 _, z, y, x = obj.key.split("/")
                 inventory.add((int(x.split(".")[0]), int(y), int(z)))
 
