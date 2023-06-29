@@ -314,6 +314,9 @@ This command is equivalent to:
 
 
 The default view will be zoomed out to view CONUS.  Not much is happening (yet) - but you can at least see which states have NAIP coverage by year.  To change years, simply pick another year from the dropdown.
+![default](https://github.com/rmferraro/aws-naip-tile-server/assets/4007906/3fb62ea0-30e8-4ff5-bad0-15ac95b7fbb2)
 
 
 The map has a XYZ tile layer (pointing to the NAIPTileApi) - which its has min & max zooms set to match the Lambda configuration (i.e. template.yaml).  So since my currently configured min zoom = 8, the NAIP tiles won't start loading until I zoom to level 8 or higher.  When the NAIP tiles start loading, you will get a summary of tile loads (per zoom).  You will also see the XYZ tile boundaries with coordinates.
+![summary](https://github.com/rmferraro/aws-naip-tile-server/assets/4007906/4ad25766-b067-4f44-ae98-c707547bf2bd)
+
