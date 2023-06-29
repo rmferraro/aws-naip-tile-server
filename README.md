@@ -290,7 +290,9 @@ As zoom level decreases, the amount of ground area covered by a single tile incr
 | 10   | 590                    | 42              | 211,406,10   |
 | 8    | 9462                   | 480             | 52,101,8     |
 
-Below zoom level 8, it is likely >1000 NAIP geotiffs need to be accessed to build a single tile, and performance really starts to tank...  In my opinion NAIP does not produce the most appealing basemaps at lower scales for a few reasons.  At this scale, you are likely looking at many different collects, in different states, at different resolutions.  The end result is basemap that is often patchy/blotchy in appearance.  So, I generally don't use NAIP for basemap for low level zooms, therefore it's not travesty that generating tiles < zoom level 8 is slow.
+My experience has been performance starts tanking at zoom 10 (and lower).  There are 2 primary contributing factors.  First, zoom level 10 is the first to require dozens (or more) NAIP geotiffs to be accessed to generate a tile.  Second, the overviews that are present in the AWS geotiffs don't provide much benefit below zoom level 12.  So the combined effect of having to actively resample dozens (or more) geotiffs is certainly going to be slower than getting already resampled data from 1-2 geotiffs...
+
+In my opinion NAIP does not produce the most appealing basemaps at lower scales for a few reasons.  At this scale, you are likely looking at many different collects (i.e. imagery from different dates), in different states, at different resolutions.  The end result is basemap that is often patchy/blotchy in appearance.  So, I generally don't use NAIP for basemap for low level zooms, therefore it's not travesty that generating tiles < zoom level 10 is slow.
 
 
 Some Possible Workarounds:
@@ -308,7 +310,7 @@ I've whipped up a no-frills map ui to help debug/asses the tile api.  To start i
 This command is equivalent to:
 
 
-    cd naip-debugger-ui
+    cd naip-inspector-ui
     npm install
     npm run dev
 
@@ -319,4 +321,3 @@ The default view will be zoomed out to view CONUS.  Not much is happening (yet) 
 
 The map has a XYZ tile layer (pointing to the NAIPTileApi) - which its has min & max zooms set to match the Lambda configuration (i.e. template.yaml).  So since my currently configured min zoom = 8, the NAIP tiles won't start loading until I zoom to level 8 or higher.  When the NAIP tiles start loading, you will get a summary of tile loads (per zoom).  You will also see the XYZ tile boundaries with coordinates.
 ![summary](https://github.com/rmferraro/aws-naip-tile-server/assets/4007906/4ad25766-b067-4f44-ae98-c707547bf2bd)
-
