@@ -1,5 +1,7 @@
 import asyncio
 import math
+import traceback
+from asyncio.exceptions import TimeoutError
 
 import aiohttp
 import click
@@ -29,22 +31,29 @@ def _seed_tiles_by_year(tiles: list[mercantile.Tile], year: int):
         url = f"{naip_tile_api_base_uri}/{year}/{tile.z}/{tile.y}/{tile.x}"
         await session.request("GET", url=url)
 
-    async def _seed_tiles_runner(batch_size: int = 100):
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
+    async def _seed_tiles_runner(batch_size: int = 500):
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=120)) as session:
             pbar = tqdm(total=len(tiles))
             batches = math.ceil(len(tiles) / batch_size)
             for batch in range(batches):
                 batch_tiles = tiles[(batch * batch_size) : (batch * batch_size) + batch_size]
                 tasks = []
                 for t in batch_tiles:
-                    tasks.append(_invoke_get_naip_tile_lambda(session=session, tile=t, year=year))
-                for done in asyncio.as_completed(tasks):
-                    try:
-                        _ = await done
-                    except Exception:
-                        # ideally we can get the failed task tile and print that out
-                        pass
-                    pbar.update(1)
+                    task = asyncio.create_task(_invoke_get_naip_tile_lambda(session=session, tile=t, year=year))
+                    task.tile = t
+                    tasks.append(task)
+
+                while tasks:
+                    done, tasks = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                    for t in done:
+                        try:
+                            _ = await t
+                        except TimeoutError:
+                            tqdm.write(f"TimeoutError happened while processing {t.tile}")
+                        except Exception:
+                            tqdm.write(f"{traceback.format_exc()} happened while processing {t.tile}")
+                        pbar.update(1)
+
             pbar.close()
 
     asyncio.run(_seed_tiles_runner())
