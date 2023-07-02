@@ -68,6 +68,7 @@ I've already attempted to justify using AWS Registry of Open Data.  Without gett
 
  - [Poetry](https://python-poetry.org/):  Python package/environment management
  - [GNU Make](https://www.gnu.org/software/make/):  This is required by AWS SAM CLI to package up Lambda Layers
+ - [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm): This is needed to run the inspector-ui
 
 ### setup
 With pre-requisites satisfied, from the root of this repo:
