@@ -1,0 +1,11 @@
+@import url(http://fonts.googleapis.com/css?family=Ubuntu);
+
+html, body {
+  width: 100vw;
+  overflow: hidden;
+  margin:0;
+}
+
+main {
+  height: 100vh;
+}
