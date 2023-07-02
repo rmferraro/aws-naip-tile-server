@@ -1,6 +1,7 @@
 import click
 
 from src.admin_cli.commands.cache import cache
+from src.admin_cli.commands.inspector_ui import inspector_ui
 from src.admin_cli.commands.stack import stack
 
 
@@ -12,3 +13,4 @@ def cli():
 
 cli.add_command(cache)
 cli.add_command(stack)
+cli.add_command((inspector_ui))
