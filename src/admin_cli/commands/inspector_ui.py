@@ -82,6 +82,7 @@ def start():
     if get_is_stack_deployed():
         update_inspector_ui_settings()
         inspector_ui_root = os.path.join(ROOT_DIR, "inspector-ui")
+        npm("install", _cwd=inspector_ui_root)
         npm("run", "dev", _cwd=inspector_ui_root)
     else:
         click.echo("aws-naip-tile-server AWS CloudFormation stack does not appear to be deployed")
