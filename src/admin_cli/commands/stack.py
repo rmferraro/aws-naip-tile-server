@@ -5,6 +5,7 @@ import click
 from rich import print_json
 from sh import sam
 
+from src.admin_cli.commands import check_system_dependencies
 from src.utils import ROOT_DIR
 from src.utils.stack_info import get_is_stack_deployed, get_stack_description
 
@@ -30,6 +31,7 @@ def status():
 
 
 @stack.command()
+@check_system_dependencies(["sam", "make"])
 def deploy():
     """Deploy aws-naip-tile-server AWS CloudFormation stack."""
     sam("build", _cwd=ROOT_DIR)
@@ -52,6 +54,7 @@ def deploy():
 
 
 @stack.command()
+@check_system_dependencies(["sam"])
 def delete():
     """Delete aws-naip-tile-server AWS CloudFormation stack."""
     if get_is_stack_deployed():
