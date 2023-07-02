@@ -5,3 +5,4 @@
 .aws-sam
 .coverage
 **/__pycache__/
+.vscode
