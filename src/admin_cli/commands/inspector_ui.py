@@ -61,12 +61,10 @@ def update_inspector_ui_settings() -> None:
     if os.path.exists(inspector_ui_env):
         settings = InspectorUISettings.from_env_file(inspector_ui_env)
         settings.VITE_NAIP_TILE_API = naip_tile_api
-        settings.VITE_NAIP_MIN_ZOOM = min_zoom
-        settings.VITE_NAIP_MAX_ZOOM = max_zoom
+        settings.VITE_MIN_ZOOM = min_zoom
+        settings.VITE_MAX_ZOOM = max_zoom
     else:
-        settings = InspectorUISettings(
-            VITE_NAIP_TILE_API=naip_tile_api, VITE_NAIP_MIN_ZOOM=min_zoom, VITE_NAIP_MAX_ZOOM=max_zoom
-        )
+        settings = InspectorUISettings(VITE_NAIP_TILE_API=naip_tile_api, VITE_MIN_ZOOM=min_zoom, VITE_MAX_ZOOM=max_zoom)
 
     settings.to_env_file(inspector_ui_env)
 
