@@ -1,4 +1,5 @@
 import os.path
+import sys
 from dataclasses import asdict, dataclass
 
 import click
@@ -83,6 +84,6 @@ def start():
         update_inspector_ui_settings()
         inspector_ui_root = os.path.join(ROOT_DIR, "inspector-ui")
         npm("install", _cwd=inspector_ui_root)
-        npm("run", "dev", _cwd=inspector_ui_root)
+        npm("run", "dev", _cwd=inspector_ui_root, _out=sys.stdout)
     else:
         click.echo("aws-naip-tile-server AWS CloudFormation stack does not appear to be deployed")
